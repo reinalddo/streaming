@@ -281,6 +281,106 @@ function createServiceAccount(array $input): array
     return ['success' => true, 'message' => 'Cuenta del servicio creada correctamente.'];
 }
 
+function updateServiceAccount(array $input): array
+{
+    requireAdminUser();
+
+    $accountId = (int) ($input['cuenta_id'] ?? 0);
+    $serviceId = (int) ($input['servicio_id'] ?? 0);
+    $accessEmail = strtolower(trim((string) ($input['correo_acceso'] ?? '')));
+    $accessPassword = trim((string) ($input['password_acceso'] ?? ''));
+    $description = trim((string) ($input['descripcion'] ?? ''));
+
+    if ($accountId <= 0 || $serviceId <= 0 || $accessEmail === '' || $accessPassword === '') {
+        return ['success' => false, 'message' => 'Completa servicio, correo y contraseña de la cuenta.'];
+    }
+
+    if (!filter_var($accessEmail, FILTER_VALIDATE_EMAIL)) {
+        return ['success' => false, 'message' => 'El correo de acceso no es valido.'];
+    }
+
+    $pdo = getPdo();
+    $accountStmt = $pdo->prepare('SELECT id FROM cuentas_servicio WHERE id = :id LIMIT 1');
+    $accountStmt->execute(['id' => $accountId]);
+
+    if ($accountStmt->fetch() === false) {
+        return ['success' => false, 'message' => 'La cuenta indicada no existe.'];
+    }
+
+    $serviceStmt = $pdo->prepare('SELECT id FROM servicios WHERE id = :id LIMIT 1');
+    $serviceStmt->execute(['id' => $serviceId]);
+
+    if ($serviceStmt->fetch() === false) {
+        return ['success' => false, 'message' => 'El servicio seleccionado no existe.'];
+    }
+
+    $dupStmt = $pdo->prepare('SELECT id FROM cuentas_servicio WHERE servicio_id = :servicio_id AND correo_acceso = :correo_acceso AND id <> :id LIMIT 1');
+    $dupStmt->execute([
+        'servicio_id' => $serviceId,
+        'correo_acceso' => $accessEmail,
+        'id' => $accountId,
+    ]);
+
+    if ($dupStmt->fetch() !== false) {
+        return ['success' => false, 'message' => 'Esa cuenta ya fue registrada para el servicio.'];
+    }
+
+    $stmt = $pdo->prepare('UPDATE cuentas_servicio SET servicio_id = :servicio_id, correo_acceso = :correo_acceso, password_acceso = :password_acceso, descripcion = :descripcion WHERE id = :id');
+
+    try {
+        $stmt->execute([
+            'servicio_id' => $serviceId,
+            'correo_acceso' => $accessEmail,
+            'password_acceso' => $accessPassword,
+            'descripcion' => $description !== '' ? $description : null,
+            'id' => $accountId,
+        ]);
+    } catch (PDOException $exception) {
+        if ($exception->getCode() === '23000') {
+            return ['success' => false, 'message' => 'Esa cuenta ya fue registrada para el servicio.'];
+        }
+
+        throw $exception;
+    }
+
+    return ['success' => true, 'message' => 'Cuenta del servicio actualizada correctamente.'];
+}
+
+function deleteServiceAccount(array $input): array
+{
+    requireAdminUser();
+
+    $accountId = (int) ($input['cuenta_id'] ?? 0);
+
+    if ($accountId <= 0) {
+        return ['success' => false, 'message' => 'Debes indicar la cuenta a eliminar.'];
+    }
+
+    $pdo = getPdo();
+    $accountStmt = $pdo->prepare('SELECT id FROM cuentas_servicio WHERE id = :id LIMIT 1');
+    $accountStmt->execute(['id' => $accountId]);
+
+    if ($accountStmt->fetch() === false) {
+        return ['success' => false, 'message' => 'La cuenta indicada no existe.'];
+    }
+
+    $assignmentCountStmt = $pdo->prepare('SELECT COUNT(*) FROM usuario_cuentas_servicio WHERE cuenta_servicio_id = :cuenta_id');
+    $assignmentCountStmt->execute(['cuenta_id' => $accountId]);
+
+    if ((int) $assignmentCountStmt->fetchColumn() > 0) {
+        return ['success' => false, 'message' => 'No puedes eliminar una cuenta que tiene usuarios asignados.'];
+    }
+
+    $deleteStmt = $pdo->prepare('DELETE FROM cuentas_servicio WHERE id = :id');
+    $deleteStmt->execute(['id' => $accountId]);
+
+    if ($deleteStmt->rowCount() === 0) {
+        return ['success' => false, 'message' => 'No fue posible eliminar la cuenta del servicio.'];
+    }
+
+    return ['success' => true, 'message' => 'Cuenta del servicio eliminada correctamente.'];
+}
+
 function assignAccountToUser(array $input): array
 {
     requireAdminUser();

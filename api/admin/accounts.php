@@ -13,8 +13,16 @@ try {
         exit;
     }
 
-    $result = createServiceAccount($_POST);
-    http_response_code($result['success'] ? 200 : 422);
+    $action = (string) ($_POST['action'] ?? 'create');
+
+    if ($action === 'update') {
+        $result = updateServiceAccount($_POST);
+    } elseif ($action === 'delete') {
+        $result = deleteServiceAccount($_POST);
+    } else {
+        $result = createServiceAccount($_POST);
+    }
+    http_response_code(200);
     echo json_encode($result, JSON_UNESCAPED_UNICODE);
 } catch (RuntimeException $exception) {
     http_response_code(403);

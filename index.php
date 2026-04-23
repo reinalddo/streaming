@@ -541,8 +541,13 @@
                                     </div>
 
                                     <div id="createAccountPanel" class="inline-card d-none mb-4">
-                                        <h3 class="h6 mb-3">Nueva cuenta para este servicio</h3>
+                                        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+                                            <h3 id="serviceAccountFormHeading" class="h6 mb-0">Nueva cuenta para este servicio</h3>
+                                            <button id="cancelServiceAccountEditButton" class="btn btn-sm btn-outline-secondary d-none" type="button">Cancelar</button>
+                                        </div>
                                         <form id="serviceAccountForm" class="row g-3" novalidate>
+                                            <input type="hidden" id="serviceAccountAction" name="action" value="create">
+                                            <input type="hidden" id="serviceAccountId" name="cuenta_id" value="">
                                             <input type="hidden" id="serviceAccountServiceId" name="servicio_id">
                                             <div class="col-12 col-lg-4">
                                                 <label class="form-label" for="serviceAccountEmail">Correo de acceso</label>
@@ -562,7 +567,7 @@
                                                 <input class="form-control" type="text" id="serviceAccountDescription" name="descripcion" placeholder="Perfil 1, pantalla disponible...">
                                             </div>
                                             <div class="col-12 d-grid d-lg-flex justify-content-lg-end">
-                                                <button class="btn btn-primary" type="submit">Guardar cuenta</button>
+                                                <button id="serviceAccountSubmitButton" class="btn btn-primary" type="submit">Guardar cuenta</button>
                                             </div>
                                         </form>
                                     </div>
@@ -576,6 +581,7 @@
                                                         <th>Descripcion</th>
                                                         <th>Contrasena</th>
                                                         <th>Usuarios Asignados</th>
+                                                        <th>Acciones</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody id="serviceAccountsTableBody"></tbody>
@@ -757,6 +763,7 @@
                                     <th>Nombre</th>
                                     <th>Usuario</th>
                                     <th>Correo</th>
+                                    <th>Acciones</th>
                                 </tr>
                             </thead>
                             <tbody id="assignedUsersTableBody"></tbody>
@@ -862,6 +869,23 @@
     </div>
 </div>
 
+<div class="modal fade" id="feedbackModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="feedbackModalTitle" class="h5 mb-0">Aviso</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <p id="feedbackModalBody" class="mb-0"></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Aceptar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
 <script>
     const authView = document.getElementById('authView');
@@ -892,8 +916,14 @@
     const backToServicesButton = document.getElementById('backToServicesButton');
     const toggleCreateAccountButton = document.getElementById('toggleCreateAccountButton');
     const createAccountPanel = document.getElementById('createAccountPanel');
+    const serviceAccountFormHeading = document.getElementById('serviceAccountFormHeading');
+    const cancelServiceAccountEditButton = document.getElementById('cancelServiceAccountEditButton');
+    const serviceAccountAction = document.getElementById('serviceAccountAction');
+    const serviceAccountId = document.getElementById('serviceAccountId');
     const serviceAccountForm = document.getElementById('serviceAccountForm');
     const serviceAccountServiceId = document.getElementById('serviceAccountServiceId');
+    const serviceAccountSubmitButton = document.getElementById('serviceAccountSubmitButton');
+    const serviceAccountEmail = document.getElementById('serviceAccountEmail');
 
     const registeredUsersTableBody = document.getElementById('registeredUsersTableBody');
     const userCountBadge = document.getElementById('userCountBadge');
@@ -933,6 +963,11 @@
     const confirmActionModalBody = document.getElementById('confirmActionModalBody');
     const confirmActionModalConfirmButton = document.getElementById('confirmActionModalConfirmButton');
     const confirmActionModal = new bootstrap.Modal(confirmActionModalElement);
+
+    const feedbackModalElement = document.getElementById('feedbackModal');
+    const feedbackModalTitle = document.getElementById('feedbackModalTitle');
+    const feedbackModalBody = document.getElementById('feedbackModalBody');
+    const feedbackModal = new bootstrap.Modal(feedbackModalElement);
 
     const passwordToggleButtons = document.querySelectorAll('[data-password-target]');
 
@@ -1155,7 +1190,33 @@
 
     function resetServiceAccountForm() {
         serviceAccountForm.reset();
+        serviceAccountAction.value = 'create';
+        serviceAccountId.value = '';
         serviceAccountServiceId.value = appState.selectedServiceId !== null ? String(appState.selectedServiceId) : '';
+        serviceAccountFormHeading.textContent = 'Nueva cuenta para este servicio';
+        serviceAccountSubmitButton.textContent = 'Guardar cuenta';
+        cancelServiceAccountEditButton.classList.add('d-none');
+    }
+
+    function populateServiceAccountForm(accountId) {
+        const account = getAccountById(accountId);
+
+        if (!account) {
+            return;
+        }
+
+        appState.selectedServiceId = Number(account.servicio_id);
+        serviceAccountAction.value = 'update';
+        serviceAccountId.value = String(account.id);
+        serviceAccountServiceId.value = String(account.servicio_id);
+        document.getElementById('serviceAccountEmail').value = account.correo_acceso;
+        document.getElementById('serviceAccountPassword').value = account.password_acceso;
+        document.getElementById('serviceAccountDescription').value = account.descripcion || '';
+        serviceAccountFormHeading.textContent = 'Editar cuenta de este servicio';
+        serviceAccountSubmitButton.textContent = 'Actualizar cuenta';
+        cancelServiceAccountEditButton.classList.remove('d-none');
+        createAccountPanel.classList.remove('d-none');
+        serviceAccountForm.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
 
     function formatServiceLogo(service) {
@@ -1175,6 +1236,12 @@
             confirmActionModalConfirmButton.className = `btn ${confirmClass}`;
             confirmActionModal.show();
         });
+    }
+
+    function showFeedbackModal({ title = 'Aviso', message }) {
+        feedbackModalTitle.textContent = title;
+        feedbackModalBody.textContent = message;
+        feedbackModal.show();
     }
 
     function settleConfirmModal(result) {
@@ -1247,7 +1314,7 @@
         serviceAccountServiceId.value = String(service.id);
 
         if (accounts.length === 0) {
-            serviceAccountsTableBody.innerHTML = '<tr><td colspan="4"><div class="empty-state">Este servicio aun no tiene cuentas registradas.</div></td></tr>';
+            serviceAccountsTableBody.innerHTML = '<tr><td colspan="5"><div class="empty-state">Este servicio aun no tiene cuentas registradas.</div></td></tr>';
             return;
         }
 
@@ -1262,6 +1329,12 @@
                     <td>${escapeHtml(account.password_acceso)}</td>
                     <td>
                         <button class="btn btn-sm btn-outline-primary" type="button" data-open-assigned-users="${account.id}">${buttonLabel}</button>
+                    </td>
+                    <td>
+                        <div class="d-flex gap-2 flex-wrap">
+                            <button class="btn btn-sm btn-outline-secondary" type="button" data-edit-service-account="${account.id}">Editar</button>
+                            <button class="btn btn-sm btn-outline-danger" type="button" data-delete-service-account="${account.id}" ${assignedUsers.length > 0 ? 'disabled' : ''}>Eliminar</button>
+                        </div>
                     </td>
                 </tr>
             `;
@@ -1280,13 +1353,16 @@
         assignedUsersModalSubtitle.textContent = `${account.servicio_nombre} · ${assignedUsers.length} usuario(s) asignado(s)`;
 
         if (assignedUsers.length === 0) {
-            assignedUsersTableBody.innerHTML = '<tr><td colspan="3"><div class="empty-state">Esta cuenta no tiene usuarios asignados.</div></td></tr>';
+            assignedUsersTableBody.innerHTML = '<tr><td colspan="4"><div class="empty-state">Esta cuenta no tiene usuarios asignados.</div></td></tr>';
         } else {
             assignedUsersTableBody.innerHTML = assignedUsers.map((user) => `
                 <tr>
                     <td>${escapeHtml(user.nombre)} ${escapeHtml(user.apellido)}</td>
                     <td>@${escapeHtml(user.username)}</td>
                     <td>${escapeHtml(user.email)}</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-danger" type="button" data-unassign-account-user="${user.assignment_id}" data-account-id="${account.id}">Desasignar</button>
+                    </td>
                 </tr>
             `).join('');
         }
@@ -1831,15 +1907,39 @@
         resetServiceAccountForm();
     });
 
+    cancelServiceAccountEditButton.addEventListener('click', () => {
+        resetServiceAccountForm();
+    });
+
     serviceAccountForm.addEventListener('submit', async (event) => {
         event.preventDefault();
-        showAdminStatus('Guardando cuenta del servicio...', 'secondary');
+        showAdminStatus(serviceAccountAction.value === 'update' ? 'Actualizando cuenta del servicio...' : 'Guardando cuenta del servicio...', 'secondary');
+
+        const formData = new FormData(serviceAccountForm);
+        formData.set('action', serviceAccountAction.value);
+        formData.set('cuenta_id', serviceAccountId.value);
+        formData.set('servicio_id', serviceAccountServiceId.value);
 
         try {
             const result = await requestJson('./api/admin/accounts.php', {
                 method: 'POST',
-                body: new FormData(serviceAccountForm),
+                body: formData,
             });
+
+            if (!result.success) {
+                showAdminStatus(result.message, 'danger');
+                showFeedbackModal({
+                    title: 'Cuenta no disponible',
+                    message: result.message,
+                });
+
+                if (typeof result.message === 'string' && result.message.toLowerCase().includes('ya fue registrada')) {
+                    serviceAccountEmail.focus();
+                    serviceAccountEmail.select();
+                }
+
+                return;
+            }
 
             const currentServiceId = appState.selectedServiceId;
             resetServiceAccountForm();
@@ -1852,17 +1952,107 @@
             }
         } catch (error) {
             showAdminStatus(error.message, 'danger');
+            showFeedbackModal({
+                title: 'No fue posible actualizar la cuenta',
+                message: error.message,
+            });
         }
     });
 
     serviceAccountsTableBody.addEventListener('click', (event) => {
         const button = event.target.closest('[data-open-assigned-users]');
+        const editButton = event.target.closest('[data-edit-service-account]');
+        const deleteButton = event.target.closest('[data-delete-service-account]');
+
+        if (editButton) {
+            populateServiceAccountForm(editButton.dataset.editServiceAccount);
+            return;
+        }
+
+        if (deleteButton) {
+            openConfirmModal({
+                title: 'Eliminar cuenta',
+                message: 'Se eliminara la cuenta seleccionada si no tiene usuarios asignados.',
+                confirmText: 'Eliminar',
+                confirmClass: 'btn btn-danger',
+            }).then(async (confirmed) => {
+                if (!confirmed) {
+                    return;
+                }
+
+                const formData = new FormData();
+                formData.append('action', 'delete');
+                formData.append('cuenta_id', deleteButton.dataset.deleteServiceAccount);
+                showAdminStatus('Eliminando cuenta del servicio...', 'secondary');
+
+                try {
+                    const result = await requestJson('./api/admin/accounts.php', {
+                        method: 'POST',
+                        body: formData,
+                    });
+
+                    if (!result.success) {
+                        showAdminStatus(result.message, 'danger');
+                        return;
+                    }
+
+                    resetServiceAccountForm();
+                    createAccountPanel.classList.add('d-none');
+                    showAdminStatus(result.message, 'success');
+                    await loadAdminOverview();
+
+                    if (appState.selectedServiceId !== null) {
+                        showServiceAccounts(appState.selectedServiceId);
+                    }
+                } catch (error) {
+                    showAdminStatus(error.message, 'danger');
+                }
+            });
+            return;
+        }
 
         if (!button) {
             return;
         }
 
         openAssignedUsersModal(button.dataset.openAssignedUsers);
+    });
+
+    assignedUsersTableBody.addEventListener('click', async (event) => {
+        const unassignButton = event.target.closest('[data-unassign-account-user]');
+
+        if (!unassignButton) {
+            return;
+        }
+
+        const confirmed = await openConfirmModal({
+            title: 'Desasignar usuario',
+            message: 'Se retirara este usuario de la cuenta seleccionada.',
+            confirmText: 'Desasignar',
+            confirmClass: 'btn btn-danger',
+        });
+
+        if (!confirmed) {
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('action', 'unassign');
+        formData.append('assignment_id', unassignButton.dataset.unassignAccountUser);
+        showAdminStatus('Desasignando usuario de la cuenta...', 'secondary');
+
+        try {
+            const result = await requestJson('./api/admin/assignments.php', {
+                method: 'POST',
+                body: formData,
+            });
+
+            showAdminStatus(result.message, 'success');
+            await loadAdminOverview();
+            openAssignedUsersModal(unassignButton.dataset.accountId);
+        } catch (error) {
+            showAdminStatus(error.message, 'danger');
+        }
     });
 
     registeredUsersTableBody.addEventListener('click', async (event) => {
