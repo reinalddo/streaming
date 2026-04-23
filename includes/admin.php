@@ -249,7 +249,7 @@ function createServiceAccount(array $input): array
     }
 
     if (!filter_var($accessEmail, FILTER_VALIDATE_EMAIL)) {
-        return ['success' => false, 'message' => 'El correo de acceso no es valido.'];
+        return ['success' => false, 'message' => 'El correo de acceso no es válido.'];
     }
 
     $pdo = getPdo();
@@ -296,7 +296,7 @@ function updateServiceAccount(array $input): array
     }
 
     if (!filter_var($accessEmail, FILTER_VALIDATE_EMAIL)) {
-        return ['success' => false, 'message' => 'El correo de acceso no es valido.'];
+        return ['success' => false, 'message' => 'El correo de acceso no es válido.'];
     }
 
     $pdo = getPdo();
@@ -415,7 +415,7 @@ function assignAccountToUser(array $input): array
         ]);
     } catch (PDOException $exception) {
         if ($exception->getCode() === '23000') {
-            return ['success' => false, 'message' => 'Esa cuenta ya esta asignada a ese usuario.'];
+            return ['success' => false, 'message' => 'Esa cuenta ya está asignada a ese usuario.'];
         }
 
         throw $exception;
@@ -431,7 +431,7 @@ function unassignAccountFromUser(array $input): array
     $assignmentId = (int) ($input['assignment_id'] ?? 0);
 
     if ($assignmentId <= 0) {
-        return ['success' => false, 'message' => 'Debes indicar la asignacion a eliminar.'];
+        return ['success' => false, 'message' => 'Debes indicar la asignación a eliminar.'];
     }
 
     $pdo = getPdo();
@@ -439,7 +439,7 @@ function unassignAccountFromUser(array $input): array
     $stmt->execute(['id' => $assignmentId]);
 
     if ($stmt->rowCount() === 0) {
-        return ['success' => false, 'message' => 'La asignacion indicada no existe.'];
+        return ['success' => false, 'message' => 'La asignación indicada no existe.'];
     }
 
     return ['success' => true, 'message' => 'Cuenta desasignada correctamente.'];
@@ -462,7 +462,7 @@ function updateRegisteredUser(array $input): array
     }
 
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        return ['success' => false, 'message' => 'El correo del usuario no es valido.'];
+        return ['success' => false, 'message' => 'El correo del usuario no es válido.'];
     }
 
     $pdo = getPdo();
@@ -515,7 +515,7 @@ function createRegisteredUser(array $input): array
     }
 
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        return ['success' => false, 'message' => 'El correo del usuario no es valido.'];
+        return ['success' => false, 'message' => 'El correo del usuario no es válido.'];
     }
 
     if (mb_strlen($password) < 6) {
@@ -545,7 +545,7 @@ function createRegisteredUser(array $input): array
         'activo' => 1,
     ]);
 
-    return ['success' => true, 'message' => 'Usuario creado correctamente desde administracion.'];
+    return ['success' => true, 'message' => 'Usuario creado correctamente desde administración.'];
 }
 
 function deleteRegisteredUser(array $input): array
@@ -641,7 +641,7 @@ function uploadServiceLogo(?array $file): ?string
     $tmpName = (string) ($file['tmp_name'] ?? '');
 
     if ($tmpName === '' || !is_uploaded_file($tmpName)) {
-        throw new RuntimeException('El archivo del logo no es valido.');
+        throw new RuntimeException('El archivo del logo no es válido.');
     }
 
     $allowedMimeTypes = [
@@ -662,7 +662,7 @@ function uploadServiceLogo(?array $file): ?string
     }
 
     if (!is_string($mimeType) || !isset($allowedMimeTypes[$mimeType])) {
-        throw new RuntimeException('El logo debe ser una imagen valida en formato PNG, JPG, WEBP, GIF o SVG.');
+        throw new RuntimeException('El logo debe ser una imagen válida en formato PNG, JPG, WEBP, GIF o SVG.');
     }
 
     $relativeDir = 'assets/services';

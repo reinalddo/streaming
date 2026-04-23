@@ -9,7 +9,7 @@ header('Content-Type: application/json; charset=UTF-8');
 try {
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
         http_response_code(405);
-        echo json_encode(['success' => false, 'message' => 'Metodo no permitido.'], JSON_UNESCAPED_UNICODE);
+        echo json_encode(['success' => false, 'message' => 'Método no permitido.'], JSON_UNESCAPED_UNICODE);
         exit;
     }
 
@@ -23,7 +23,7 @@ try {
         $result = deleteService($_POST);
     } else {
         http_response_code(422);
-        echo json_encode(['success' => false, 'message' => 'Accion no valida.'], JSON_UNESCAPED_UNICODE);
+        echo json_encode(['success' => false, 'message' => 'Acción no válida.'], JSON_UNESCAPED_UNICODE);
         exit;
     }
 

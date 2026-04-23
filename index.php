@@ -361,7 +361,7 @@
 
                     <ul class="nav nav-pills nav-fill gap-2 mb-4 auth-tabs" role="tablist">
                         <li class="nav-item" role="presentation">
-                            <button class="nav-link active" id="login-tab" data-bs-toggle="pill" data-bs-target="#login-pane" type="button" role="tab" aria-controls="login-pane" aria-selected="true">Iniciar sesion</button>
+                            <button class="nav-link active" id="login-tab" data-bs-toggle="pill" data-bs-target="#login-pane" type="button" role="tab" aria-controls="login-pane" aria-selected="true">Iniciar sesión</button>
                         </li>
                         <li class="nav-item" role="presentation">
                             <button class="nav-link" id="register-tab" data-bs-toggle="pill" data-bs-target="#register-pane" type="button" role="tab" aria-controls="register-pane" aria-selected="false">Registrarse</button>
@@ -372,7 +372,7 @@
                         <div class="tab-pane fade show active" id="login-pane" role="tabpanel" aria-labelledby="login-tab" tabindex="0">
                             <form id="loginForm" class="row g-3" novalidate>
                                 <div class="col-12">
-                                    <label class="form-label" for="loginIdentifier">Usuario o correo electronico</label>
+                                    <label class="form-label" for="loginIdentifier">Usuario o correo electrónico</label>
                                     <input class="form-control" type="text" id="loginIdentifier" name="login" placeholder="usuario o correo registrado" required>
                                 </div>
                                 <div class="col-12">
@@ -405,11 +405,11 @@
                                     <input class="form-control" type="text" id="registerUsername" name="username" placeholder="usuario123" required>
                                 </div>
                                 <div class="col-12 col-md-6">
-                                    <label class="form-label" for="registerTelefono">Telefono</label>
+                                    <label class="form-label" for="registerTelefono">Teléfono</label>
                                     <input class="form-control" type="text" id="registerTelefono" name="telefono" placeholder="Opcional">
                                 </div>
                                 <div class="col-12">
-                                    <label class="form-label" for="registerEmail">Correo electronico</label>
+                                    <label class="form-label" for="registerEmail">Correo electrónico</label>
                                     <input class="form-control" type="email" id="registerEmail" name="email" placeholder="usuario@dominio.com" required>
                                 </div>
                                 <div class="col-12">
@@ -438,13 +438,13 @@
                 <div class="card-body p-4 p-lg-5">
                     <div class="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-4">
                         <div>
-                            <p class="text-primary fw-semibold mb-1">Administracion</p>
+                            <p class="text-primary fw-semibold mb-1">Administración</p>
                             <h1 class="h3 mb-2">Panel del administrador</h1>
                             <p class="text-secondary mb-0">Organiza servicios, consulta sus cuentas disponibles, administra usuarios registrados y asigna cuentas activas.</p>
                         </div>
                         <div class="d-flex align-items-center gap-2 flex-wrap justify-content-end">
                             <div id="adminIdentity" class="admin-identity"></div>
-                            <button id="logoutButton" class="btn btn-outline-secondary" type="button">Cerrar sesion</button>
+                            <button id="logoutButton" class="btn btn-outline-secondary" type="button">Cerrar sesión</button>
                         </div>
                     </div>
 
@@ -470,7 +470,7 @@
                                         <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
                                             <div>
                                                 <h2 id="serviceFormHeading" class="section-title">Agregar servicio</h2>
-                                                <p id="serviceFormSubtitle" class="section-subtitle mb-0">Crea servicios con nombre, logo local, color destacado y descripcion.</p>
+                                                <p id="serviceFormSubtitle" class="section-subtitle mb-0">Crea servicios con nombre, logo local, color destacado y descripción.</p>
                                             </div>
                                             <button id="cancelServiceEditButton" class="btn btn-sm btn-outline-secondary d-none" type="button">Cancelar</button>
                                         </div>
@@ -499,7 +499,7 @@
                                                 <input class="form-control form-control-color" type="color" id="serviceColor" name="color_destacado" value="#0b57d0">
                                             </div>
                                             <div class="col-12">
-                                                <label class="form-label" for="serviceDescription">Descripcion</label>
+                                                <label class="form-label" for="serviceDescription">Descripción</label>
                                                 <textarea class="form-control" id="serviceDescription" name="descripcion" rows="4" placeholder="Describe el servicio, tipo de plan, notas u observaciones."></textarea>
                                             </div>
                                             <div class="col-12 d-grid">
@@ -554,7 +554,7 @@
                                                 <input class="form-control" type="email" id="serviceAccountEmail" name="correo_acceso" placeholder="cuenta@servicio.com" required>
                                             </div>
                                             <div class="col-12 col-lg-4">
-                                                <label class="form-label" for="serviceAccountPassword">Contrasena</label>
+                                                <label class="form-label" for="serviceAccountPassword">Contraseña</label>
                                                 <div class="password-field">
                                                     <input class="form-control" type="password" id="serviceAccountPassword" name="password_acceso" placeholder="Clave de la cuenta" required>
                                                     <button class="password-toggle" type="button" data-password-target="serviceAccountPassword" aria-label="Mostrar clave">
@@ -563,7 +563,7 @@
                                                 </div>
                                             </div>
                                             <div class="col-12 col-lg-4">
-                                                <label class="form-label" for="serviceAccountDescription">Descripcion</label>
+                                                <label class="form-label" for="serviceAccountDescription">Descripción</label>
                                                 <input class="form-control" type="text" id="serviceAccountDescription" name="descripcion" placeholder="Perfil 1, pantalla disponible...">
                                             </div>
                                             <div class="col-12 d-grid d-lg-flex justify-content-lg-end">
@@ -578,8 +578,8 @@
                                                 <thead>
                                                     <tr>
                                                         <th>Correo</th>
-                                                        <th>Descripcion</th>
-                                                        <th>Contrasena</th>
+                                                        <th>Descripción</th>
+                                                        <th>Contraseña</th>
                                                         <th>Usuarios Asignados</th>
                                                         <th>Acciones</th>
                                                     </tr>
@@ -610,7 +610,7 @@
 
                                 <div id="createUserPanel" class="inline-card d-none mb-4">
                                     <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
-                                        <h3 class="h6 mb-0">Registrar usuario desde administracion</h3>
+                                        <h3 class="h6 mb-0">Registrar usuario desde administración</h3>
                                         <button id="cancelCreateUserButton" class="btn btn-sm btn-outline-secondary" type="button">Cancelar</button>
                                     </div>
                                     <form id="adminCreateUserForm" class="row g-3" novalidate>
@@ -631,7 +631,7 @@
                                             <input class="form-control" type="email" id="adminCreateUserEmail" name="email" required>
                                         </div>
                                         <div class="col-12 col-md-6 col-xl-4">
-                                            <label class="form-label" for="adminCreateUserPhone">Telefono</label>
+                                            <label class="form-label" for="adminCreateUserPhone">Teléfono</label>
                                             <input class="form-control" type="text" id="adminCreateUserPhone" name="telefono">
                                         </div>
                                         <div class="col-12 col-md-6 col-xl-4">
@@ -657,7 +657,7 @@
                                                     <th>Nombre</th>
                                                     <th>Usuario</th>
                                                     <th>Correo</th>
-                                                    <th>Telefono</th>
+                                                    <th>Teléfono</th>
                                                     <th>Estado</th>
                                                     <th>Cuentas Asignadas</th>
                                                     <th>Acciones</th>
@@ -692,7 +692,7 @@
                                             <input class="form-control" type="email" id="editUserEmail" name="email" required>
                                         </div>
                                         <div class="col-12 col-md-6 col-xl-3">
-                                            <label class="form-label" for="editUserPhone">Telefono</label>
+                                            <label class="form-label" for="editUserPhone">Teléfono</label>
                                             <input class="form-control" type="text" id="editUserPhone" name="telefono">
                                         </div>
                                         <div class="col-12 col-md-6 col-xl-3">
@@ -793,7 +793,7 @@
                                 <tr>
                                     <th>Servicio</th>
                                     <th>Cuenta</th>
-                                    <th>Descripcion</th>
+                                    <th>Descripción</th>
                                     <th>Clave</th>
                                     <th>Acciones</th>
                                 </tr>
@@ -840,7 +840,7 @@
                                     <th>Usuario</th>
                                     <th>Correo</th>
                                     <th>Asignaciones en este servicio</th>
-                                    <th>Accion</th>
+                                    <th>Acción</th>
                                 </tr>
                             </thead>
                             <tbody id="serviceAssignUsersTableBody"></tbody>
@@ -856,7 +856,7 @@
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
-                <h2 id="confirmActionModalTitle" class="h5 mb-0">Confirmar accion</h2>
+                <h2 id="confirmActionModalTitle" class="h5 mb-0">Confirmar acción</h2>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
             </div>
             <div class="modal-body">
@@ -1133,7 +1133,7 @@
         serviceFormServiceId.value = '';
         serviceSubmitButton.textContent = 'Guardar servicio';
         serviceFormHeading.textContent = 'Agregar servicio';
-        serviceFormSubtitle.textContent = 'Crea servicios con nombre, logo local, color destacado y descripcion.';
+        serviceFormSubtitle.textContent = 'Crea servicios con nombre, logo local, color destacado y descripción.';
         cancelServiceEditButton.classList.add('d-none');
         currentServiceLogoWrapper.classList.add('d-none');
         currentServiceLogoImage.src = '';
@@ -1159,7 +1159,7 @@
         document.getElementById('serviceLogo').value = '';
         serviceSubmitButton.textContent = 'Actualizar servicio';
         serviceFormHeading.textContent = 'Editar servicio';
-        serviceFormSubtitle.textContent = 'Actualiza nombre, logo local, color destacado y descripcion del servicio.';
+        serviceFormSubtitle.textContent = 'Actualiza nombre, logo local, color destacado y descripción del servicio.';
         cancelServiceEditButton.classList.remove('d-none');
 
         if (service.logo_url) {
@@ -1260,7 +1260,7 @@
         serviceCountBadge.textContent = `${services.length} servicio(s)`;
 
         if (services.length === 0) {
-            servicesList.innerHTML = '<div class="col-12"><div class="empty-state">Aun no hay servicios creados.</div></div>';
+            servicesList.innerHTML = '<div class="col-12"><div class="empty-state">Aún no hay servicios creados.</div></div>';
             return;
         }
 
@@ -1282,7 +1282,7 @@
                                         ${escapeHtml(service.color_destacado)}
                                     </span>
                                 </div>
-                                <p class="small text-secondary mt-2 mb-0">${escapeHtml(service.descripcion || 'Sin descripcion registrada.')}</p>
+                                <p class="small text-secondary mt-2 mb-0">${escapeHtml(service.descripcion || 'Sin descripción registrada.')}</p>
                             </div>
                         </div>
                         <div class="small text-secondary mb-3">${accountCount} cuenta(s) registradas</div>
@@ -1317,7 +1317,7 @@
         serviceAccountServiceId.value = String(service.id);
 
         if (accounts.length === 0) {
-            serviceAccountsTableBody.innerHTML = '<tr><td colspan="5"><div class="empty-state">Este servicio aun no tiene cuentas registradas.</div></td></tr>';
+            serviceAccountsTableBody.innerHTML = '<tr><td colspan="5"><div class="empty-state">Este servicio aún no tiene cuentas registradas.</div></td></tr>';
             return;
         }
 
@@ -1328,7 +1328,7 @@
             return `
                 <tr>
                     <td><div class="fw-semibold">${escapeHtml(account.correo_acceso)}</div></td>
-                    <td>${escapeHtml(account.descripcion || 'Sin descripcion')}</td>
+                    <td>${escapeHtml(account.descripcion || 'Sin descripción')}</td>
                     <td>${escapeHtml(account.password_acceso)}</td>
                     <td>
                         <button class="btn btn-sm btn-outline-primary" type="button" data-open-assigned-users="${account.id}">${buttonLabel}</button>
@@ -1386,13 +1386,13 @@
         userAssignmentsModalSubtitle.textContent = `${assignments.length} cuenta(s) asignada(s) en total`;
 
         if (assignments.length === 0) {
-            userAssignmentsTableBody.innerHTML = '<tr><td colspan="5"><div class="empty-state">Este usuario aun no tiene cuentas asignadas.</div></td></tr>';
+            userAssignmentsTableBody.innerHTML = '<tr><td colspan="5"><div class="empty-state">Este usuario aún no tiene cuentas asignadas.</div></td></tr>';
         } else {
             userAssignmentsTableBody.innerHTML = assignments.map((assignment) => `
                 <tr>
                     <td>${escapeHtml(assignment.service_name)}</td>
                     <td>${escapeHtml(assignment.account_email)}</td>
-                    <td>${escapeHtml(assignment.description || 'Sin descripcion')}</td>
+                    <td>${escapeHtml(assignment.description || 'Sin descripción')}</td>
                     <td>${escapeHtml(assignment.account_password)}</td>
                     <td>
                         <button class="btn btn-sm btn-outline-danger" type="button" data-unassign-user-assignment="${assignment.assignment_id}">Desafiliar</button>
@@ -1424,7 +1424,7 @@
                     <td><div class="fw-semibold">${escapeHtml(user.nombre)} ${escapeHtml(user.apellido)}</div></td>
                     <td>@${escapeHtml(user.username)}</td>
                     <td>${escapeHtml(user.email)}</td>
-                    <td>${escapeHtml(user.telefono || 'Sin telefono')}</td>
+                    <td>${escapeHtml(user.telefono || 'Sin teléfono')}</td>
                     <td>${Number(user.activo) === 1 ? '<span class="badge text-bg-success">Activo</span>' : '<span class="badge text-bg-secondary">Inactivo</span>'}</td>
                     <td>
                         <button class="btn btn-sm btn-outline-primary" type="button" data-view-user-assignments="${user.id}">Ver Cuentas Asignadas</button>
@@ -1468,10 +1468,10 @@
         const paginatedRows = filteredRows.slice(startIndex, startIndex + state.pageSize);
         const summary = totalRows === 0
             ? 'No hay resultados para los filtros actuales.'
-            : `Mostrando ${startIndex + 1}-${Math.min(startIndex + state.pageSize, totalRows)} de ${totalRows} asignacion(es)`;
+            : `Mostrando ${startIndex + 1}-${Math.min(startIndex + state.pageSize, totalRows)} de ${totalRows} asignación(es)`;
 
         const tableMarkup = totalRows === 0
-            ? '<div class="empty-state">Este servicio aun no tiene usuarios asignados.</div>'
+            ? '<div class="empty-state">Este servicio aún no tiene usuarios asignados.</div>'
             : `
                 <div class="data-table-wrapper">
                     <div class="table-responsive">
@@ -1482,7 +1482,7 @@
                                     <th>Usuario</th>
                                     <th>Correo</th>
                                     <th>Cuenta asignada</th>
-                                    <th>Descripcion</th>
+                                    <th>Descripción</th>
                                     <th>Acciones</th>
                                 </tr>
                             </thead>
@@ -1496,7 +1496,7 @@
                                             <div class="fw-semibold">${escapeHtml(row.account_email)}</div>
                                             <div class="small text-secondary">Clave: ${escapeHtml(row.account_password)}</div>
                                         </td>
-                                        <td>${escapeHtml(row.description || 'Sin descripcion')}</td>
+                                        <td>${escapeHtml(row.description || 'Sin descripción')}</td>
                                         <td>
                                             <button class="btn btn-sm btn-outline-danger" type="button" data-unassign-id="${row.assignment_id}">Desasignar</button>
                                         </td>
@@ -1514,7 +1514,7 @@
                     <input class="form-control" type="search" value="${escapeHtml(state.query)}" placeholder="Filtrar por usuario, correo o cuenta" data-service-filter="${service.id}">
                 </div>
                 <div class="d-flex gap-2 align-items-center flex-wrap">
-                    <label class="small text-secondary" for="servicePageSize${service.id}">Filas por pagina</label>
+                    <label class="small text-secondary" for="servicePageSize${service.id}">Filas por página</label>
                     <select class="form-select" id="servicePageSize${service.id}" data-service-page-size="${service.id}">
                         <option value="5" ${state.pageSize === 5 ? 'selected' : ''}>5</option>
                         <option value="10" ${state.pageSize === 10 ? 'selected' : ''}>10</option>
@@ -1527,7 +1527,7 @@
                 <div class="small text-secondary">${summary}</div>
                 <div class="table-action-group">
                     <button class="btn btn-sm btn-outline-secondary" type="button" data-service-page-nav="${service.id}" data-direction="prev" ${state.page <= 1 ? 'disabled' : ''}>Anterior</button>
-                    <span class="metric-pill">Pagina ${state.page} de ${totalPages}</span>
+                    <span class="metric-pill">Página ${state.page} de ${totalPages}</span>
                     <button class="btn btn-sm btn-outline-secondary" type="button" data-service-page-nav="${service.id}" data-direction="next" ${state.page >= totalPages ? 'disabled' : ''}>Siguiente</button>
                 </div>
             </div>
@@ -1539,7 +1539,7 @@
         assignmentServiceCountBadge.textContent = `${services.length} servicio(s)`;
 
         if (services.length === 0) {
-            serviceAssignmentsTableBody.innerHTML = '<tr><td colspan="4"><div class="empty-state">Aun no hay servicios creados.</div></td></tr>';
+            serviceAssignmentsTableBody.innerHTML = '<tr><td colspan="4"><div class="empty-state">Aún no hay servicios creados.</div></td></tr>';
             return;
         }
 
@@ -1556,7 +1556,7 @@
                             <div class="service-logo" style="background:${escapeHtml(service.color_destacado)};">${formatServiceLogo(service)}</div>
                             <div>
                                 <div class="fw-semibold">${escapeHtml(service.nombre)}</div>
-                                <div class="small text-secondary">${escapeHtml(service.descripcion || 'Sin descripcion registrada.')}</div>
+                                <div class="small text-secondary">${escapeHtml(service.descripcion || 'Sin descripción registrada.')}</div>
                             </div>
                         </div>
                     </td>
@@ -1616,7 +1616,7 @@
                 : serviceAssignments.map((assignment) => `
                     <div class="small mb-1">
                         <span class="fw-semibold">${escapeHtml(assignment.account_email)}</span>
-                        <span class="text-secondary">${escapeHtml(assignment.description || 'Sin descripcion')}</span>
+                        <span class="text-secondary">${escapeHtml(assignment.description || 'Sin descripción')}</span>
                     </div>
                 `).join('');
 
@@ -1678,7 +1678,7 @@
     }
 
     async function loadAdminOverview() {
-        showAdminStatus('Cargando panel de administracion...', 'secondary');
+        showAdminStatus('Cargando panel de administración...', 'secondary');
         const result = await requestJson('./api/admin/overview.php');
         appState.overview = {
             services: normalizeArray(result.services),
@@ -1791,7 +1791,7 @@
 
     adminCreateUserForm.addEventListener('submit', async (event) => {
         event.preventDefault();
-        showAdminStatus('Registrando usuario desde administracion...', 'secondary');
+        showAdminStatus('Registrando usuario desde administración...', 'secondary');
 
         const formData = new FormData(adminCreateUserForm);
         formData.append('action', 'create');
@@ -2086,7 +2086,7 @@
 
         const confirmed = await openConfirmModal({
             title: 'Eliminar usuario',
-            message: 'Se eliminara el usuario seleccionado. Esta accion no se puede deshacer.',
+            message: 'Se eliminará el usuario seleccionado. Esta acción no se puede deshacer.',
             confirmText: 'Eliminar',
             confirmClass: 'btn btn-danger',
         });
@@ -2332,7 +2332,7 @@
         try {
             await requestJson('./api/logout.php', { method: 'POST' });
             leaveAdminMode();
-            showStatus('Sesion cerrada.', 'secondary');
+            showStatus('Sesión cerrada.', 'secondary');
         } catch (error) {
             showAdminStatus(error.message, 'danger');
         }

@@ -12,7 +12,7 @@ ensureSessionStarted();
 try {
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
         http_response_code(405);
-        echo json_encode(['success' => false, 'exists' => false, 'message' => 'Metodo no permitido.'], JSON_UNESCAPED_UNICODE);
+        echo json_encode(['success' => false, 'exists' => false, 'message' => 'Método no permitido.'], JSON_UNESCAPED_UNICODE);
         exit;
     }
 
@@ -22,5 +22,5 @@ try {
     echo json_encode($result, JSON_UNESCAPED_UNICODE);
 } catch (Throwable $exception) {
     http_response_code(500);
-    echo json_encode(['success' => false, 'exists' => false, 'message' => 'Error interno al iniciar sesion.'], JSON_UNESCAPED_UNICODE);
+    echo json_encode(['success' => false, 'exists' => false, 'message' => 'Error interno al iniciar sesión.'], JSON_UNESCAPED_UNICODE);
 }

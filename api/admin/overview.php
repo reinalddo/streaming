@@ -9,7 +9,7 @@ header('Content-Type: application/json; charset=UTF-8');
 try {
     if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
         http_response_code(405);
-        echo json_encode(['success' => false, 'message' => 'Metodo no permitido.'], JSON_UNESCAPED_UNICODE);
+        echo json_encode(['success' => false, 'message' => 'Método no permitido.'], JSON_UNESCAPED_UNICODE);
         exit;
     }
 
@@ -20,5 +20,5 @@ try {
     echo json_encode(['success' => false, 'message' => $exception->getMessage()], JSON_UNESCAPED_UNICODE);
 } catch (Throwable $exception) {
     http_response_code(500);
-    echo json_encode(['success' => false, 'message' => 'No fue posible cargar el panel de administracion.'], JSON_UNESCAPED_UNICODE);
+    echo json_encode(['success' => false, 'message' => 'No fue posible cargar el panel de administración.'], JSON_UNESCAPED_UNICODE);
 }

@@ -19,7 +19,7 @@ function registerUser(array $input): array
     }
 
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        return ['success' => false, 'message' => 'El correo no es valido.'];
+        return ['success' => false, 'message' => 'El correo no es válido.'];
     }
 
     if (mb_strlen($password) < 6) {
