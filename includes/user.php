@@ -78,6 +78,7 @@ function searchUserInformationByEmail(array $input): array
         'assignments' => $matchedAssignments,
         'messages' => $mailSearchResult['messages'],
         'pagination' => $mailSearchResult['pagination'],
+        'mail_search_notice' => $mailSearchResult['search_notice'] ?? null,
         'delay_days' => $mailConfiguration['delay_days'],
         'delay_minutes' => $mailConfiguration['delay_minutes'],
     ];

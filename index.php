@@ -2061,6 +2061,7 @@ header('Expires: 0');
         const delayMinutes = Number(result.delay_minutes) > 0 ? Number(result.delay_minutes) : 20;
         const delayLabel = formatMailDelayLabel(delayDays, delayMinutes);
         const selectedEmail = result.selected_account_email || userSearchEmail.value.trim();
+        const mailSearchNotice = typeof result.mail_search_notice === 'string' ? result.mail_search_notice.trim() : '';
         const totalMessages = Math.max(0, Number(pagination.total_messages) || messages.length);
         const currentPage = Math.max(1, Number(pagination.page) || 1);
         const totalPages = Math.max(1, Number(pagination.total_pages) || 1);
@@ -2094,6 +2095,9 @@ header('Expires: 0');
                     ${messages.map((message, index) => {
                         const collapseId = `mailboxMessage${message.uid || index}`;
                         const headingId = `${collapseId}Heading`;
+                        const outsideDelayBadge = message.outside_delay_window
+                            ? '<span class="badge text-bg-warning text-dark rounded-pill">Fuera de ventana</span>'
+                            : '';
                         return `
                             <div class="accordion-item">
                                 <h2 class="accordion-header" id="${headingId}">
@@ -2106,7 +2110,10 @@ header('Expires: 0');
                                                 </div>
                                                 <div class="text-end">
                                                     <div class="small text-secondary">${escapeHtml(message.received_at_label || '')}</div>
-                                                    <span class="badge ${message.is_seen ? 'text-bg-light' : 'text-bg-primary'} rounded-pill">${message.is_seen ? 'Leído' : 'Nuevo'}</span>
+                                                    <div class="d-flex justify-content-end align-items-center gap-2 flex-wrap">
+                                                        ${outsideDelayBadge}
+                                                        <span class="badge ${message.is_seen ? 'text-bg-light' : 'text-bg-primary'} rounded-pill">${message.is_seen ? 'Leído' : 'Nuevo'}</span>
+                                                    </div>
                                                 </div>
                                             </div>
                                             <div class="mailbox-preview">${escapeHtml(message.preview || '[sin vista previa]')}</div>
@@ -2151,6 +2158,7 @@ header('Expires: 0');
                 </div>
             </div>
             ${selectedAssignmentMarkup}
+            ${mailSearchNotice !== '' ? `<div class="alert alert-warning mb-4" role="alert">${escapeHtml(mailSearchNotice)}</div>` : ''}
             ${messagesMarkup}
         `;
 

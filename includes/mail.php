@@ -12,6 +12,7 @@ const DEFAULT_MAIL_MAX_MESSAGES = 20;
 const DEFAULT_MAIL_PAGE_SIZE = 5;
 const IMAP_HEADER_SCAN_FALLBACK_LIMIT = 120;
 const IMAP_OVERVIEW_BATCH_SIZE = 25;
+const MAIL_TIMEZONE = 'America/Caracas';
 const IMAP_OPEN_TIMEOUT_SECONDS = 12;
 const IMAP_READ_TIMEOUT_SECONDS = 20;
 const IMAP_WRITE_TIMEOUT_SECONDS = 20;
@@ -229,7 +230,7 @@ function openConfiguredMailbox(string $imapMailbox, string $imapUser, string $im
 function searchRecentMessageHeadersForAccount($imap, string $searchTerm, int $delayDays, int $delayMinutes, int $maxMessages, int $page, int $pageSize): array
 {
     $totalMinutes = max(1, ($delayDays * 1440) + $delayMinutes);
-    $sinceTime = new DateTimeImmutable(sprintf('-%d minutes', $totalMinutes));
+    $sinceTime = getCurrentMailTime()->modify(sprintf('-%d minutes', $totalMinutes));
     $messageUids = searchCandidateMessageUidsForAccount($imap, $searchTerm, $sinceTime);
 
     if ($messageUids === []) {
@@ -238,7 +239,22 @@ function searchRecentMessageHeadersForAccount($imap, string $searchTerm, int $de
 
     $messages = buildRecentMessageHeaderSummaries($imap, $messageUids, $searchTerm, $sinceTime, $maxMessages);
 
-    return buildMailboxHeaderResult($messages, $page, $pageSize);
+    if ($messages !== []) {
+        return buildMailboxHeaderResult($messages, $page, $pageSize);
+    }
+
+    $fallbackMessages = buildRecentMessageHeaderSummaries($imap, $messageUids, $searchTerm, null, $maxMessages, $sinceTime);
+
+    if ($fallbackMessages === []) {
+        return buildMailboxHeaderResult([], $page, $pageSize);
+    }
+
+    return buildMailboxHeaderResult(
+        $fallbackMessages,
+        $page,
+        $pageSize,
+        'Mostrando los últimos correos coincidentes aunque ya quedaron fuera de la ventana configurada.'
+    );
 }
 
 /**
@@ -300,7 +316,7 @@ function searchCandidateMessageUidsForAccount($imap, string $searchTerm, DateTim
                 continue;
             }
 
-            $receivedAt = parseImapOverviewReceivedAt($overview);
+            $receivedAt = resolveMessageReceivedAt($imap, $overview, $sinceTime);
 
             if ($receivedAt === null) {
                 continue;
@@ -324,11 +340,12 @@ function searchCandidateMessageUidsForAccount($imap, string $searchTerm, DateTim
  * @param array<int, int> $messageUids
  * @return array<int, array<string, mixed>>
  */
-function buildRecentMessageHeaderSummaries($imap, array $messageUids, string $searchTerm, DateTimeImmutable $sinceTime, int $maxMessages): array
+function buildRecentMessageHeaderSummaries($imap, array $messageUids, string $searchTerm, ?DateTimeImmutable $sinceTime, int $maxMessages, ?DateTimeImmutable $windowSinceTime = null): array
 {
     rsort($messageUids);
     $messages = [];
     $chunks = array_chunk($messageUids, IMAP_OVERVIEW_BATCH_SIZE);
+    $effectiveWindowSinceTime = $windowSinceTime ?? $sinceTime;
 
     foreach ($chunks as $chunk) {
         $overviewMap = fetchOverviewMapByUids($imap, $chunk);
@@ -340,13 +357,13 @@ function buildRecentMessageHeaderSummaries($imap, array $messageUids, string $se
                 continue;
             }
 
-            $receivedAt = parseImapOverviewReceivedAt($overview);
+            $receivedAt = resolveMessageReceivedAt($imap, $overview, $sinceTime, true);
 
             if ($receivedAt === null) {
                 continue;
             }
 
-            if ($receivedAt < $sinceTime) {
+            if ($sinceTime !== null && $receivedAt < $sinceTime) {
                 break 2;
             }
 
@@ -356,6 +373,7 @@ function buildRecentMessageHeaderSummaries($imap, array $messageUids, string $se
                 'from' => decodeMimeHeaderString((string) ($overview->from ?? 'Desconocido')),
                 'received_at' => $receivedAt->format('Y-m-d H:i:s'),
                 'received_at_label' => $receivedAt->format('d/m/Y H:i'),
+                'outside_delay_window' => $effectiveWindowSinceTime instanceof DateTimeImmutable ? $receivedAt < $effectiveWindowSinceTime : false,
                 'is_seen' => !empty($overview->seen),
                 'preview' => 'Haz clic para cargar el contenido del correo.',
             ];
@@ -403,7 +421,7 @@ function fetchOverviewMapByUids($imap, array $uids): array
  * @param array<int, array<string, mixed>> $messages
  * @return array<string, mixed>
  */
-function buildMailboxHeaderResult(array $messages, int $page, int $pageSize): array
+function buildMailboxHeaderResult(array $messages, int $page, int $pageSize, ?string $searchNotice = null): array
 {
     $totalMessages = count($messages);
     $normalizedPageSize = max(1, $pageSize);
@@ -419,6 +437,7 @@ function buildMailboxHeaderResult(array $messages, int $page, int $pageSize): ar
             'total_pages' => $totalPages,
             'total_messages' => $totalMessages,
         ],
+        'search_notice' => $searchNotice,
     ];
 }
 
@@ -440,7 +459,7 @@ function configureImapTimeouts(): void
 function fetchMailboxMessageBodyByUid($imap, string $searchTerm, int $messageUid, int $delayDays, int $delayMinutes): array
 {
     $totalMinutes = max(1, ($delayDays * 1440) + $delayMinutes);
-    $sinceTime = new DateTimeImmutable(sprintf('-%d minutes', $totalMinutes));
+    $sinceTime = getCurrentMailTime()->modify(sprintf('-%d minutes', $totalMinutes));
     $messageNumber = imap_msgno($imap, $messageUid);
 
     if ($messageNumber <= 0) {
@@ -454,13 +473,13 @@ function fetchMailboxMessageBodyByUid($imap, string $searchTerm, int $messageUid
     }
 
     $overview = $overviewList[0];
-    $receivedAt = parseImapOverviewDate((string) ($overview->date ?? ''));
+    $rawHeaders = imap_fetchheader($imap, $messageNumber);
+    $receivedAt = resolveMessageReceivedAt($imap, $overview, $sinceTime, true, is_string($rawHeaders) ? $rawHeaders : null);
 
-    if ($receivedAt === null || $receivedAt < $sinceTime) {
+    if ($receivedAt === null) {
         throw new RuntimeException('El correo solicitado ya no está dentro de la ventana configurada.');
     }
 
-    $rawHeaders = imap_fetchheader($imap, $messageNumber);
     $htmlBody = getHtmlBody($imap, $messageNumber);
     $plainTextBody = getPlainTextBody($imap, $messageNumber);
 
@@ -587,12 +606,42 @@ function parseImapOverviewReceivedAt(object $overview): ?DateTimeImmutable
 
     if ($unixTimestamp > 0) {
         try {
-            return (new DateTimeImmutable())->setTimestamp($unixTimestamp);
+            return (new DateTimeImmutable('now', getMailTimezone()))->setTimestamp($unixTimestamp)->setTimezone(getMailTimezone());
         } catch (Throwable) {
         }
     }
 
     return parseImapOverviewDate((string) ($overview->date ?? ''));
+}
+
+/**
+ * @param resource|\IMAP\Connection $imap
+ */
+function resolveMessageReceivedAt($imap, object $overview, ?DateTimeImmutable $sinceTime = null, bool $preferHeaderDate = false, ?string $rawHeaders = null): ?DateTimeImmutable
+{
+    $overviewReceivedAt = parseImapOverviewReceivedAt($overview);
+    $shouldCheckHeaders = $preferHeaderDate || $overviewReceivedAt === null;
+
+    if (!$shouldCheckHeaders && $sinceTime !== null && $overviewReceivedAt !== null) {
+        $shouldCheckHeaders = isSameMailLocalDate($overviewReceivedAt, $sinceTime);
+    }
+
+    if (!$shouldCheckHeaders) {
+        return $overviewReceivedAt;
+    }
+
+    $rawHeaders ??= fetchRawHeadersForOverview($imap, $overview);
+    $headerReceivedAt = is_string($rawHeaders) ? parseRawHeadersReceivedAt($rawHeaders) : null;
+
+    if ($headerReceivedAt === null) {
+        return $overviewReceivedAt;
+    }
+
+    if ($overviewReceivedAt === null) {
+        return $headerReceivedAt;
+    }
+
+    return $preferHeaderDate ? $headerReceivedAt : $overviewReceivedAt;
 }
 
 function parseImapOverviewDate(string $date): ?DateTimeImmutable
@@ -602,10 +651,80 @@ function parseImapOverviewDate(string $date): ?DateTimeImmutable
     }
 
     try {
-        return new DateTimeImmutable($date);
+        return (new DateTimeImmutable($date))->setTimezone(getMailTimezone());
     } catch (Throwable) {
         return null;
     }
+}
+
+function parseRawHeadersReceivedAt(string $rawHeaders): ?DateTimeImmutable
+{
+    if ($rawHeaders === '') {
+        return null;
+    }
+
+    $normalizedHeaders = preg_replace("/\r?\n[ \t]+/", ' ', $rawHeaders) ?? $rawHeaders;
+
+    if (preg_match('/^date:\s*(.+)$/im', $normalizedHeaders, $matches) !== 1) {
+        return null;
+    }
+
+    return parseImapOverviewDate(trim((string) ($matches[1] ?? '')));
+}
+
+/**
+ * @param resource|\IMAP\Connection $imap
+ */
+function fetchRawHeadersForOverview($imap, object $overview): ?string
+{
+    $messageNumber = resolveOverviewMessageNumber($imap, $overview);
+
+    if ($messageNumber <= 0) {
+        return null;
+    }
+
+    $rawHeaders = imap_fetchheader($imap, $messageNumber);
+
+    return is_string($rawHeaders) && $rawHeaders !== '' ? $rawHeaders : null;
+}
+
+/**
+ * @param resource|\IMAP\Connection $imap
+ */
+function resolveOverviewMessageNumber($imap, object $overview): int
+{
+    $messageNumber = (int) ($overview->msgno ?? 0);
+
+    if ($messageNumber > 0) {
+        return $messageNumber;
+    }
+
+    $uid = (int) ($overview->uid ?? 0);
+
+    return $uid > 0 ? (int) imap_msgno($imap, $uid) : 0;
+}
+
+function isSameMailLocalDate(DateTimeImmutable $left, DateTimeImmutable $right): bool
+{
+    return $left->format('Y-m-d') === $right->format('Y-m-d');
+}
+
+function getMailTimezone(): DateTimeZone
+{
+    static $timezone = null;
+
+    if ($timezone instanceof DateTimeZone) {
+        return $timezone;
+    }
+
+    $timezone = new DateTimeZone(defined('APP_TIMEZONE') ? APP_TIMEZONE : MAIL_TIMEZONE);
+
+    return $timezone;
+}
+
+function getCurrentMailTime(): DateTimeImmutable
+{
+    return new DateTimeImmutable('now', getMailTimezone());
 }
 
 function decodeMimeHeaderString(string $value): string

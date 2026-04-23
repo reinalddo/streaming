@@ -3,6 +3,9 @@
 declare(strict_types=1);
 
 const DB_PORT = '3306';
+const APP_TIMEZONE = 'America/Caracas';
+
+date_default_timezone_set(APP_TIMEZONE);
 
 function getDatabaseConfig(): array
 {
