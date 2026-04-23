@@ -9,6 +9,9 @@ const DEFAULT_IMAP_MAILBOX = '{imap.hostinger.com:993/imap/ssl}INBOX';
 const DEFAULT_MAIL_DELAY_DAYS = 0;
 const DEFAULT_MAIL_DELAY_MINUTES = 20;
 const DEFAULT_MAIL_MAX_MESSAGES = 20;
+const DEFAULT_MAIL_PAGE_SIZE = 5;
+const IMAP_HEADER_SCAN_FALLBACK_LIMIT = 120;
+const IMAP_OVERVIEW_BATCH_SIZE = 25;
 const IMAP_OPEN_TIMEOUT_SECONDS = 12;
 const IMAP_READ_TIMEOUT_SECONDS = 20;
 const IMAP_WRITE_TIMEOUT_SECONDS = 20;
@@ -148,7 +151,7 @@ function formatMailConfigurationForClient(array $configuration): array
     ];
 }
 
-function fetchRecentMailboxMessagesForAssignedAccount(string $accountEmail): array
+function fetchRecentMailboxMessagesForAssignedAccount(string $searchTerm, int $page = 1): array
 {
     if (!function_exists('imap_open')) {
         throw new RuntimeException('La extensión PHP IMAP no está habilitada en este servidor.');
@@ -163,12 +166,41 @@ function fetchRecentMailboxMessagesForAssignedAccount(string $accountEmail): arr
     $imap = openConfiguredMailbox($config['imap_mailbox'], $config['imap_user'], $config['imap_password']);
 
     try {
-        return searchRecentMessagesForAccount(
+        return searchRecentMessageHeadersForAccount(
             $imap,
-            strtolower(trim($accountEmail)),
+            trim($searchTerm),
             (int) ($config['delay_days'] ?? DEFAULT_MAIL_DELAY_DAYS),
             (int) $config['delay_minutes'],
-            (int) $config['max_messages']
+            (int) $config['max_messages'],
+            max(1, $page),
+            DEFAULT_MAIL_PAGE_SIZE
+        );
+    } finally {
+        imap_close($imap);
+    }
+}
+
+function fetchMailboxMessageBodyForAssignedAccount(string $searchTerm, int $messageUid): array
+{
+    if (!function_exists('imap_open')) {
+        throw new RuntimeException('La extensión PHP IMAP no está habilitada en este servidor.');
+    }
+
+    $config = fetchStoredMailConfiguration();
+
+    if ($config['imap_mailbox'] === '' || $config['imap_user'] === '' || $config['imap_password'] === '') {
+        throw new RuntimeException('El administrador aún no ha configurado el acceso al correo IMAP.');
+    }
+
+    $imap = openConfiguredMailbox($config['imap_mailbox'], $config['imap_user'], $config['imap_password']);
+
+    try {
+        return fetchMailboxMessageBodyByUid(
+            $imap,
+            trim($searchTerm),
+            $messageUid,
+            (int) ($config['delay_days'] ?? DEFAULT_MAIL_DELAY_DAYS),
+            (int) $config['delay_minutes']
         );
     } finally {
         imap_close($imap);
@@ -194,67 +226,204 @@ function openConfiguredMailbox(string $imapMailbox, string $imapUser, string $im
  * @param resource|\IMAP\Connection $imap
  * @return array<int, array<string, mixed>>
  */
-function searchRecentMessagesForAccount($imap, string $accountEmail, int $delayDays, int $delayMinutes, int $maxMessages): array
+function searchRecentMessageHeadersForAccount($imap, string $searchTerm, int $delayDays, int $delayMinutes, int $maxMessages, int $page, int $pageSize): array
 {
     $totalMinutes = max(1, ($delayDays * 1440) + $delayMinutes);
     $sinceTime = new DateTimeImmutable(sprintf('-%d minutes', $totalMinutes));
-    $messageUids = imap_search($imap, sprintf('SINCE "%s"', $sinceTime->format('d-M-Y')), SE_UID);
+    $messageUids = searchCandidateMessageUidsForAccount($imap, $searchTerm, $sinceTime);
 
-    if ($messageUids === false) {
+    if ($messageUids === []) {
+        return buildMailboxHeaderResult([], $page, $pageSize);
+    }
+
+    $messages = buildRecentMessageHeaderSummaries($imap, $messageUids, $searchTerm, $sinceTime, $maxMessages);
+
+    return buildMailboxHeaderResult($messages, $page, $pageSize);
+}
+
+/**
+ * @param resource|\IMAP\Connection $imap
+ * @return array<int, int>
+ */
+function searchCandidateMessageUidsForAccount($imap, string $searchTerm, DateTimeImmutable $sinceTime): array
+{
+    $normalizedSearchTerm = trim($searchTerm);
+
+    if ($normalizedSearchTerm === '') {
         return [];
     }
 
+    $escapedSearchTerm = addcslashes($normalizedSearchTerm, '"\\');
+    $sinceDate = $sinceTime->format('d-M-Y');
+    $queries = [
+        sprintf('FROM "%s" SINCE "%s"', $escapedSearchTerm, $sinceDate),
+        sprintf('TO "%s" SINCE "%s"', $escapedSearchTerm, $sinceDate),
+        sprintf('CC "%s" SINCE "%s"', $escapedSearchTerm, $sinceDate),
+        sprintf('BCC "%s" SINCE "%s"', $escapedSearchTerm, $sinceDate),
+        sprintf('SUBJECT "%s" SINCE "%s"', $escapedSearchTerm, $sinceDate),
+        sprintf('TEXT "%s" SINCE "%s"', $escapedSearchTerm, $sinceDate),
+    ];
+    $matchedUids = [];
+
+    foreach ($queries as $query) {
+        $queryResult = imap_search($imap, $query, SE_UID);
+
+        if (!is_array($queryResult) || $queryResult === []) {
+            continue;
+        }
+
+        foreach ($queryResult as $uid) {
+            $matchedUids[(int) $uid] = (int) $uid;
+        }
+    }
+
+    if ($matchedUids !== []) {
+        return array_values($matchedUids);
+    }
+
+    $fallbackUids = imap_search($imap, sprintf('SINCE "%s"', $sinceDate), SE_UID);
+
+    if (!is_array($fallbackUids) || $fallbackUids === []) {
+        return [];
+    }
+
+    rsort($fallbackUids);
+    $fallbackChunks = array_chunk(array_slice($fallbackUids, 0, IMAP_HEADER_SCAN_FALLBACK_LIMIT), IMAP_OVERVIEW_BATCH_SIZE);
+
+    foreach ($fallbackChunks as $chunk) {
+        $overviewMap = fetchOverviewMapByUids($imap, $chunk);
+
+        foreach ($chunk as $uid) {
+            $overview = $overviewMap[(int) $uid] ?? null;
+
+            if ($overview === null) {
+                continue;
+            }
+
+            $receivedAt = parseImapOverviewReceivedAt($overview);
+
+            if ($receivedAt === null) {
+                continue;
+            }
+
+            if ($receivedAt < $sinceTime) {
+                break 2;
+            }
+
+            if (overviewMatchesSearchTerm($overview, $normalizedSearchTerm)) {
+                $matchedUids[(int) $uid] = (int) $uid;
+            }
+        }
+    }
+
+    return array_values($matchedUids);
+}
+
+/**
+ * @param resource|\IMAP\Connection $imap
+ * @param array<int, int> $messageUids
+ * @return array<int, array<string, mixed>>
+ */
+function buildRecentMessageHeaderSummaries($imap, array $messageUids, string $searchTerm, DateTimeImmutable $sinceTime, int $maxMessages): array
+{
     rsort($messageUids);
     $messages = [];
+    $chunks = array_chunk($messageUids, IMAP_OVERVIEW_BATCH_SIZE);
 
-    foreach ($messageUids as $uid) {
-        $overviewList = imap_fetch_overview($imap, (string) $uid, FT_UID);
+    foreach ($chunks as $chunk) {
+        $overviewMap = fetchOverviewMapByUids($imap, $chunk);
 
-        if (!is_array($overviewList) || !isset($overviewList[0])) {
-            continue;
-        }
+        foreach ($chunk as $uid) {
+            $overview = $overviewMap[(int) $uid] ?? null;
 
-        $overview = $overviewList[0];
-        $receivedAt = parseImapOverviewDate((string) ($overview->date ?? ''));
+            if ($overview === null) {
+                continue;
+            }
 
-        if ($receivedAt === null || $receivedAt < $sinceTime) {
-            continue;
-        }
+            $receivedAt = parseImapOverviewReceivedAt($overview);
 
-        $messageNumber = imap_msgno($imap, (int) $uid);
+            if ($receivedAt === null) {
+                continue;
+            }
 
-        if ($messageNumber <= 0) {
-            continue;
-        }
+            if ($receivedAt < $sinceTime) {
+                break 2;
+            }
 
-        $htmlBody = getHtmlBody($imap, $messageNumber);
-        $plainTextBody = getPlainTextBody($imap, $messageNumber);
+            if (!overviewMatchesSearchTerm($overview, $searchTerm) && !empty($overview->to)) {
+                continue;
+            }
 
-        if (!messageTargetsAccountEmail($imap, $messageNumber, $accountEmail, $plainTextBody, $htmlBody)) {
-            continue;
-        }
+            $messages[] = [
+                'uid' => (int) $uid,
+                'subject' => decodeMimeHeaderString((string) ($overview->subject ?? '')) ?: '[sin asunto]',
+                'from' => decodeMimeHeaderString((string) ($overview->from ?? 'Desconocido')),
+                'received_at' => $receivedAt->format('Y-m-d H:i:s'),
+                'received_at_label' => $receivedAt->format('d/m/Y H:i'),
+                'is_seen' => !empty($overview->seen),
+                'preview' => 'Haz clic para cargar el contenido del correo.',
+            ];
 
-        $sanitizedHtml = $htmlBody !== null && trim($htmlBody) !== ''
-            ? sanitizeHtmlBody($htmlBody)
-            : nl2br(escapeHtmlFragment(trim($plainTextBody) !== '' ? trim($plainTextBody) : '[sin contenido]'));
-
-        $messages[] = [
-            'uid' => (int) $uid,
-            'subject' => decodeMimeHeaderString((string) ($overview->subject ?? '')) ?: '[sin asunto]',
-            'from' => decodeMimeHeaderString((string) ($overview->from ?? 'Desconocido')),
-            'received_at' => $receivedAt->format('Y-m-d H:i:s'),
-            'received_at_label' => $receivedAt->format('d/m/Y H:i'),
-            'is_seen' => !empty($overview->seen),
-            'body_html' => $sanitizedHtml,
-            'preview' => buildMessagePreview($plainTextBody, $sanitizedHtml),
-        ];
-
-        if (count($messages) >= $maxMessages) {
-            break;
+            if (count($messages) >= $maxMessages) {
+                break 2;
+            }
         }
     }
 
     return $messages;
+}
+
+/**
+ * @param resource|\IMAP\Connection $imap
+ * @param array<int, int> $uids
+ * @return array<int, object>
+ */
+function fetchOverviewMapByUids($imap, array $uids): array
+{
+    if ($uids === []) {
+        return [];
+    }
+
+    $overviewList = imap_fetch_overview($imap, implode(',', array_map('intval', $uids)), FT_UID);
+
+    if (!is_array($overviewList)) {
+        return [];
+    }
+
+    $overviewMap = [];
+
+    foreach ($overviewList as $overview) {
+        $uid = (int) ($overview->uid ?? 0);
+
+        if ($uid > 0) {
+            $overviewMap[$uid] = $overview;
+        }
+    }
+
+    return $overviewMap;
+}
+
+/**
+ * @param array<int, array<string, mixed>> $messages
+ * @return array<string, mixed>
+ */
+function buildMailboxHeaderResult(array $messages, int $page, int $pageSize): array
+{
+    $totalMessages = count($messages);
+    $normalizedPageSize = max(1, $pageSize);
+    $totalPages = max(1, (int) ceil($totalMessages / $normalizedPageSize));
+    $normalizedPage = min(max(1, $page), $totalPages);
+    $offset = ($normalizedPage - 1) * $normalizedPageSize;
+
+    return [
+        'messages' => array_slice($messages, $offset, $normalizedPageSize),
+        'pagination' => [
+            'page' => $normalizedPage,
+            'page_size' => $normalizedPageSize,
+            'total_pages' => $totalPages,
+            'total_messages' => $totalMessages,
+        ],
+    ];
 }
 
 function configureImapTimeouts(): void
@@ -272,14 +441,50 @@ function configureImapTimeouts(): void
 /**
  * @param resource|\IMAP\Connection $imap
  */
-function messageTargetsAccountEmail($imap, int $messageNumber, string $accountEmail, string $plainTextBody = '', ?string $htmlBody = null): bool
+function fetchMailboxMessageBodyByUid($imap, string $searchTerm, int $messageUid, int $delayDays, int $delayMinutes): array
 {
-    $rawHeaders = imap_fetchheader($imap, $messageNumber);
+    $totalMinutes = max(1, ($delayDays * 1440) + $delayMinutes);
+    $sinceTime = new DateTimeImmutable(sprintf('-%d minutes', $totalMinutes));
+    $messageNumber = imap_msgno($imap, $messageUid);
 
-    if ($rawHeaders === false) {
-        throw new RuntimeException(getImapError('No fue posible leer los encabezados del correo.'));
+    if ($messageNumber <= 0) {
+        throw new RuntimeException('No fue posible localizar el correo solicitado.');
     }
 
+    $overviewList = imap_fetch_overview($imap, (string) $messageUid, FT_UID);
+
+    if (!is_array($overviewList) || !isset($overviewList[0])) {
+        throw new RuntimeException('No fue posible leer el resumen del correo solicitado.');
+    }
+
+    $overview = $overviewList[0];
+    $receivedAt = parseImapOverviewDate((string) ($overview->date ?? ''));
+
+    if ($receivedAt === null || $receivedAt < $sinceTime) {
+        throw new RuntimeException('El correo solicitado ya no está dentro de la ventana configurada.');
+    }
+
+    $rawHeaders = imap_fetchheader($imap, $messageNumber);
+
+    if ($rawHeaders === false || (!overviewMatchesSearchTerm($overview, $searchTerm) && !messageHeadersMatchSearchTerm($rawHeaders, $searchTerm))) {
+        throw new RuntimeException('El correo solicitado no corresponde al criterio consultado.');
+    }
+
+    $htmlBody = getHtmlBody($imap, $messageNumber);
+    $plainTextBody = getPlainTextBody($imap, $messageNumber);
+    $sanitizedHtml = $htmlBody !== null && trim($htmlBody) !== ''
+        ? sanitizeHtmlBody($htmlBody)
+        : nl2br(escapeHtmlFragment(trim($plainTextBody) !== '' ? trim($plainTextBody) : '[sin contenido]'));
+
+    return [
+        'uid' => $messageUid,
+        'body_html' => $sanitizedHtml,
+        'preview' => buildMessagePreview($plainTextBody, $sanitizedHtml),
+    ];
+}
+
+function messageHeadersTargetAccountEmail(string $rawHeaders, string $accountEmail): bool
+{
     $normalizedHeaders = preg_replace("/\r?\n[ \t]+/", ' ', $rawHeaders) ?? $rawHeaders;
     $quotedEmail = preg_quote($accountEmail, '/');
     $recipientHeaderPattern = implode('|', [
@@ -292,28 +497,72 @@ function messageTargetsAccountEmail($imap, int $messageNumber, string $accountEm
         'resent-to',
     ]);
 
-    if (preg_match('/^(?:' . $recipientHeaderPattern . '):.*' . $quotedEmail . '/im', $normalizedHeaders) === 1) {
-        return true;
+    return preg_match('/^(?:' . $recipientHeaderPattern . '):.*' . $quotedEmail . '/im', $normalizedHeaders) === 1;
+}
+
+function messageHeadersMatchSearchTerm(string $rawHeaders, string $searchTerm): bool
+{
+    $normalizedSearchTerm = trim($searchTerm);
+
+    if ($normalizedSearchTerm === '') {
+        return false;
     }
 
-    $searchBodies = [];
+    return stripos($rawHeaders, $normalizedSearchTerm) !== false;
+}
 
-    if ($plainTextBody !== '') {
-        $searchBodies[] = $plainTextBody;
-    }
+function overviewTargetsAccountEmail(object $overview, string $accountEmail): bool
+{
+    $fields = [
+        (string) ($overview->to ?? ''),
+        (string) ($overview->cc ?? ''),
+    ];
 
-    if ($htmlBody !== null && $htmlBody !== '') {
-        $searchBodies[] = html_entity_decode(strip_tags($htmlBody), ENT_QUOTES | ENT_HTML5, 'UTF-8');
-        $searchBodies[] = $htmlBody;
-    }
-
-    foreach ($searchBodies as $bodyContent) {
-        if (stripos($bodyContent, $accountEmail) !== false) {
+    foreach ($fields as $fieldValue) {
+        if ($fieldValue !== '' && stripos($fieldValue, $accountEmail) !== false) {
             return true;
         }
     }
 
     return false;
+}
+
+function overviewMatchesSearchTerm(object $overview, string $searchTerm): bool
+{
+    $normalizedSearchTerm = trim($searchTerm);
+
+    if ($normalizedSearchTerm === '') {
+        return false;
+    }
+
+    $fields = [
+        (string) ($overview->from ?? ''),
+        (string) ($overview->to ?? ''),
+        (string) ($overview->cc ?? ''),
+        (string) ($overview->subject ?? ''),
+    ];
+
+    foreach ($fields as $fieldValue) {
+        if ($fieldValue !== '' && stripos($fieldValue, $normalizedSearchTerm) !== false) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+function parseImapOverviewReceivedAt(object $overview): ?DateTimeImmutable
+{
+    $unixTimestamp = (int) ($overview->udate ?? 0);
+
+    if ($unixTimestamp > 0) {
+        try {
+            return (new DateTimeImmutable())->setTimestamp($unixTimestamp);
+        } catch (Throwable) {
+        }
+    }
+
+    return parseImapOverviewDate((string) ($overview->date ?? ''));
 }
 
 function parseImapOverviewDate(string $date): ?DateTimeImmutable

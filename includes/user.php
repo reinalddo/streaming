@@ -43,14 +43,15 @@ function searchUserInformationByEmail(array $input): array
 {
     $authenticatedUser = requireRegisteredUser();
 
-    $email = strtolower(trim((string) ($input['email'] ?? '')));
+    $searchTerm = trim((string) ($input['email'] ?? ''));
+    $page = max(1, (int) ($input['page'] ?? 1));
 
-    if ($email === '') {
-        return ['success' => false, 'message' => 'Debes indicar un correo para buscar.'];
+    if ($searchTerm === '') {
+        return ['success' => false, 'message' => 'Debes indicar un correo o texto para buscar.'];
     }
 
-    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        return ['success' => false, 'message' => 'Debes escribir un correo válido.'];
+    if (mb_strlen($searchTerm) < 3) {
+        return ['success' => false, 'message' => 'Debes escribir al menos 3 caracteres para buscar.'];
     }
 
     $pdo = getPdo();
@@ -63,24 +64,46 @@ function searchUserInformationByEmail(array $input): array
     }
 
     $assignments = fetchUserAssignments($pdo, (int) $user['id']);
-    $matchedAssignments = array_values(array_filter($assignments, static fn(array $assignment): bool => strtolower((string) $assignment['account_email']) === $email));
-
-    if ($matchedAssignments === []) {
-        return ['success' => true, 'found' => false, 'message' => 'Ese correo no está asignado a tu usuario.'];
-    }
+    $matchedAssignments = array_values(array_filter($assignments, static fn(array $assignment): bool => strtolower((string) $assignment['account_email']) === strtolower($searchTerm)));
 
     $mailConfiguration = fetchStoredMailConfiguration();
+    $mailSearchResult = fetchRecentMailboxMessagesForAssignedAccount($searchTerm, $page);
 
     return [
         'success' => true,
         'found' => true,
         'message' => 'Información encontrada correctamente.',
         'user' => normalizeUserProfile($user),
-        'selected_account_email' => $email,
+        'selected_account_email' => $searchTerm,
         'assignments' => $matchedAssignments,
-        'messages' => fetchRecentMailboxMessagesForAssignedAccount($email),
+        'messages' => $mailSearchResult['messages'],
+        'pagination' => $mailSearchResult['pagination'],
         'delay_days' => $mailConfiguration['delay_days'],
         'delay_minutes' => $mailConfiguration['delay_minutes'],
+    ];
+}
+
+function fetchUserMailboxMessage(array $input): array
+{
+    $authenticatedUser = requireRegisteredUser();
+    $searchTerm = trim((string) ($input['email'] ?? ''));
+    $messageUid = (int) ($input['uid'] ?? 0);
+
+    if ($searchTerm === '' || mb_strlen($searchTerm) < 3) {
+        return ['success' => false, 'message' => 'Debes indicar un criterio válido para consultar el mensaje.'];
+    }
+
+    if ($messageUid <= 0) {
+        return ['success' => false, 'message' => 'No fue posible identificar el correo solicitado.'];
+    }
+
+    $pdo = getPdo();
+
+    return [
+        'success' => true,
+        'message' => 'Contenido del correo cargado correctamente.',
+        'email' => $searchTerm,
+        'message_data' => fetchMailboxMessageBodyForAssignedAccount($searchTerm, $messageUid),
     ];
 }
 

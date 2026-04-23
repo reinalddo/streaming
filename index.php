@@ -394,6 +394,33 @@ header('Expires: 0');
             overflow-x: auto;
         }
 
+        .mailbox-body-state {
+            color: var(--pc-muted);
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            min-height: 4.5rem;
+        }
+
+        .mailbox-body-spinner {
+            width: 1.1rem;
+            height: 1.1rem;
+            border-radius: 50%;
+            border: 2px solid rgba(11, 87, 208, 0.18);
+            border-top-color: var(--pc-primary);
+            animation: user-search-spin 0.85s linear infinite;
+            flex-shrink: 0;
+        }
+
+        .mailbox-pagination {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+            margin-top: 1rem;
+        }
+
         .empty-state {
             border: 1px dashed #cbd5e1;
             border-radius: 1rem;
@@ -1473,6 +1500,14 @@ header('Expires: 0');
             profile: null,
             assignments: [],
         },
+        userMailbox: {
+            selectedEmail: '',
+            page: 1,
+            totalPages: 1,
+            totalMessages: 0,
+            loadedBodies: {},
+            loadingBodies: {},
+        },
         selectedServiceId: null,
         selectedAssignServiceId: null,
         selectedAssignedUsersAccountId: null,
@@ -1746,6 +1781,14 @@ header('Expires: 0');
     }
 
     function renderUserModuleEmptyState(message) {
+        appState.userMailbox = {
+            selectedEmail: '',
+            page: 1,
+            totalPages: 1,
+            totalMessages: 0,
+            loadedBodies: {},
+            loadingBodies: {},
+        };
         userSearchResults.innerHTML = `<div class="empty-state">${escapeHtml(message)}</div>`;
     }
 
@@ -1768,7 +1811,7 @@ header('Expires: 0');
         userSearchLoadingModal.hide();
     }
 
-    async function submitUserSearch({ source = 'manual' } = {}) {
+    async function submitUserSearch({ source = 'manual', page = 1 } = {}) {
         if (appState.userSearchPending) {
             return;
         }
@@ -1787,16 +1830,10 @@ header('Expires: 0');
             return;
         }
 
-        if (!getUserModuleAssignments().some((assignment) => String(assignment.account_email).toLowerCase() === selectedEmail)) {
-            showUserStatus('Debes seleccionar una de las cuentas asignadas a tu usuario.', 'danger');
-            renderUserModuleEmptyState('Selecciona una cuenta válida desde el listado para consultar su información.');
-            renderUserSearchOptions(userSearchEmail.value, { forceOpen: true });
-            return;
-        }
-
         hideUserSearchOptions();
         showUserStatus('', 'secondary');
         const formData = new FormData(userSearchForm);
+        formData.set('page', String(Math.max(1, Number(page) || 1)));
         setUserSearchLoading(true);
 
         try {
@@ -1821,6 +1858,107 @@ header('Expires: 0');
         const normalizedMinutes = Number(delayMinutes) > 0 ? Number(delayMinutes) : 20;
 
         return `${normalizedDays} día(s) · ${normalizedMinutes} min`;
+    }
+
+    function getUserMailboxCacheKey(email, uid) {
+        return `${String(email).toLowerCase()}:${Number(uid)}`;
+    }
+
+    function renderUserMailboxPagination(pagination) {
+        const page = Math.max(1, Number(pagination?.page) || 1);
+        const totalPages = Math.max(1, Number(pagination?.total_pages) || 1);
+
+        if (totalPages <= 1) {
+            return '';
+        }
+
+        return `
+            <div class="mailbox-pagination">
+                <button class="btn btn-sm btn-outline-secondary" type="button" data-user-mail-page-nav="prev" ${page <= 1 ? 'disabled' : ''}>Anterior</button>
+                <span class="metric-pill">Página ${page} de ${totalPages}</span>
+                <button class="btn btn-sm btn-outline-secondary" type="button" data-user-mail-page-nav="next" ${page >= totalPages ? 'disabled' : ''}>Siguiente</button>
+            </div>
+        `;
+    }
+
+    function renderMailboxBodyPlaceholder(message, selectedEmail) {
+        const cacheKey = getUserMailboxCacheKey(selectedEmail, message.uid);
+        const cachedBody = appState.userMailbox.loadedBodies[cacheKey];
+
+        if (typeof cachedBody === 'string' && cachedBody !== '') {
+            return `<div class="mailbox-body" data-mailbox-body data-mail-uid="${escapeHtml(String(message.uid))}" data-mail-email="${escapeHtml(selectedEmail)}">${cachedBody}</div>`;
+        }
+
+        return `
+            <div class="mailbox-body" data-mailbox-body data-mail-uid="${escapeHtml(String(message.uid))}" data-mail-email="${escapeHtml(selectedEmail)}">
+                <div class="mailbox-body-state">Abre este correo para cargar su contenido.</div>
+            </div>
+        `;
+    }
+
+    function setMailboxBodyLoading(container) {
+        if (!container) {
+            return;
+        }
+
+        container.innerHTML = `
+            <div class="mailbox-body-state">
+                <span class="mailbox-body-spinner" aria-hidden="true"></span>
+                <span>Cargando contenido del correo...</span>
+            </div>
+        `;
+    }
+
+    function setMailboxBodyError(container, message) {
+        if (!container) {
+            return;
+        }
+
+        container.innerHTML = `<div class="mailbox-body-state text-danger">${escapeHtml(message)}</div>`;
+    }
+
+    async function loadUserMailboxMessage(uid, email) {
+        const normalizedUid = Number(uid) || 0;
+        const normalizedEmail = String(email || '').trim().toLowerCase();
+        const container = userSearchResults.querySelector(`[data-mailbox-body][data-mail-uid="${CSS.escape(String(normalizedUid))}"][data-mail-email="${CSS.escape(normalizedEmail)}"]`);
+
+        if (!container || normalizedUid <= 0 || normalizedEmail === '') {
+            return;
+        }
+
+        const cacheKey = getUserMailboxCacheKey(normalizedEmail, normalizedUid);
+
+        if (typeof appState.userMailbox.loadedBodies[cacheKey] === 'string') {
+            container.innerHTML = appState.userMailbox.loadedBodies[cacheKey];
+            return;
+        }
+
+        if (appState.userMailbox.loadingBodies[cacheKey]) {
+            return;
+        }
+
+        appState.userMailbox.loadingBodies[cacheKey] = true;
+        setMailboxBodyLoading(container);
+
+        try {
+            const formData = new FormData();
+            formData.set('email', normalizedEmail);
+            formData.set('uid', String(normalizedUid));
+
+            const result = await requestJson('./api/user/message.php', {
+                method: 'POST',
+                body: formData,
+                timeoutMs: 20000,
+            });
+
+            const bodyHtml = result.message_data?.body_html || '<p>[sin contenido]</p>';
+            appState.userMailbox.loadedBodies[cacheKey] = bodyHtml;
+            container.innerHTML = bodyHtml;
+        } catch (error) {
+            setMailboxBodyError(container, error.message || 'No fue posible cargar el contenido del correo.');
+        } finally {
+            delete appState.userMailbox.loadingBodies[cacheKey];
+        }
     }
 
     function renderMailConfiguration() {
@@ -1855,7 +1993,7 @@ header('Expires: 0');
         userSearchEmail.value = '';
         userSearchEmail.placeholder = 'Escriba el correo a consultar';
         userSearchHelp.textContent = result.assignments.length > 0
-            ? 'Solo puedes buscar correos de cuentas que ya estén asignadas a tu usuario.'
+            ? 'Puedes buscar por una cuenta asignada o por un correo relacionado que aparezca en remitente, destinatario o asunto.'
             : 'Aún no tienes cuentas asignadas. Cuando tengas una, aparecerá aquí para consultarla.';
         userSearchEmail.disabled = result.assignments.length === 0 || appState.userSearchPending;
         userSearchButton.disabled = result.assignments.length === 0 || appState.userSearchPending;
@@ -1914,12 +2052,21 @@ header('Expires: 0');
 
         const assignments = normalizeArray(result.assignments);
         const messages = normalizeArray(result.messages);
+        const pagination = result.pagination || {};
         const user = result.user || {};
         const delayDays = Number(result.delay_days) >= 0 ? Number(result.delay_days) : 0;
         const delayMinutes = Number(result.delay_minutes) > 0 ? Number(result.delay_minutes) : 20;
         const delayLabel = formatMailDelayLabel(delayDays, delayMinutes);
         const selectedEmail = result.selected_account_email || userSearchEmail.value.trim();
+        const totalMessages = Math.max(0, Number(pagination.total_messages) || messages.length);
+        const currentPage = Math.max(1, Number(pagination.page) || 1);
+        const totalPages = Math.max(1, Number(pagination.total_pages) || 1);
         const selectedAssignment = assignments[0] || getUserModuleAssignments().find((assignment) => String(assignment.account_email).toLowerCase() === String(selectedEmail).toLowerCase()) || null;
+
+        appState.userMailbox.selectedEmail = String(selectedEmail).toLowerCase();
+        appState.userMailbox.page = currentPage;
+        appState.userMailbox.totalPages = totalPages;
+        appState.userMailbox.totalMessages = totalMessages;
         const selectedAssignmentMarkup = selectedAssignment
             ? `
                 <article class="user-assignment-card mb-4">
@@ -1965,13 +2112,14 @@ header('Expires: 0');
                                 </h2>
                                 <div id="${collapseId}" class="accordion-collapse collapse ${index === 0 ? 'show' : ''}" aria-labelledby="${headingId}" data-bs-parent="#mailboxAccordion">
                                     <div class="accordion-body">
-                                        <div class="mailbox-body">${message.body_html || '<p>[sin contenido]</p>'}</div>
+                                        ${renderMailboxBodyPlaceholder(message, selectedEmail)}
                                     </div>
                                 </div>
                             </div>
                         `;
                     }).join('')}
                 </div>
+                ${renderUserMailboxPagination(pagination)}
             `;
 
         userSearchResults.innerHTML = `
@@ -1986,7 +2134,7 @@ header('Expires: 0');
                 </div>
                 <div class="user-profile-grid">
                     <div class="user-profile-metric">
-                        <span class="user-profile-label">Cuenta consultada</span>
+                        <span class="user-profile-label">Criterio consultado</span>
                         <div>${escapeHtml(selectedEmail || 'No disponible')}</div>
                     </div>
                     <div class="user-profile-metric">
@@ -1995,13 +2143,17 @@ header('Expires: 0');
                     </div>
                     <div class="user-profile-metric">
                         <span class="user-profile-label">Correos encontrados</span>
-                        <div>${messages.length} correo(s)</div>
+                        <div>${totalMessages} correo(s)</div>
                     </div>
                 </div>
             </div>
             ${selectedAssignmentMarkup}
             ${messagesMarkup}
         `;
+
+        if (messages.length > 0) {
+            loadUserMailboxMessage(messages[0].uid, selectedEmail);
+        }
     }
 
     async function enterUserMode(user, { animate = false } = {}) {
@@ -2906,6 +3058,39 @@ header('Expires: 0');
         userSearchEmail.value = option.dataset.userAssignmentEmail || '';
         hideUserSearchOptions();
         await submitUserSearch({ source: 'auto' });
+    });
+
+    userSearchResults.addEventListener('click', async (event) => {
+        const button = event.target.closest('[data-user-mail-page-nav]');
+
+        if (!button) {
+            return;
+        }
+
+        const currentPage = appState.userMailbox.page || 1;
+        const nextPage = button.dataset.userMailPageNav === 'next' ? currentPage + 1 : currentPage - 1;
+
+        if (nextPage < 1 || nextPage > appState.userMailbox.totalPages) {
+            return;
+        }
+
+        await submitUserSearch({ source: 'page', page: nextPage });
+    });
+
+    userSearchResults.addEventListener('show.bs.collapse', (event) => {
+        const collapse = event.target.closest('.accordion-collapse');
+
+        if (!collapse) {
+            return;
+        }
+
+        const container = collapse.querySelector('[data-mailbox-body]');
+
+        if (!container) {
+            return;
+        }
+
+        loadUserMailboxMessage(container.dataset.mailUid, container.dataset.mailEmail);
     });
 
     mailConfigForm.addEventListener('submit', async (event) => {
