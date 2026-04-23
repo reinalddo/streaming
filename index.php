@@ -795,6 +795,7 @@
                                     <th>Cuenta</th>
                                     <th>Descripcion</th>
                                     <th>Clave</th>
+                                    <th>Acciones</th>
                                 </tr>
                             </thead>
                             <tbody id="userAssignmentsTableBody"></tbody>
@@ -978,6 +979,7 @@
         expandedAssignmentServiceId: null,
         assignmentTableState: {},
         confirmResolver: null,
+        selectedUserAssignmentsUserId: null,
         overview: {
             services: [],
             accounts: [],
@@ -1104,6 +1106,7 @@
         resetServiceForm();
         resetServiceAccountForm();
         resetCreateUserForm();
+        appState.selectedUserAssignmentsUserId = null;
         showServicesOverview();
         showAdminStatus('', 'secondary');
     }
@@ -1377,12 +1380,13 @@
             return;
         }
 
+        appState.selectedUserAssignmentsUserId = Number(userId);
         const assignments = normalizeArray(user.assignments);
         userAssignmentsModalTitle.textContent = `Cuentas asignadas a ${user.nombre} ${user.apellido}`;
         userAssignmentsModalSubtitle.textContent = `${assignments.length} cuenta(s) asignada(s) en total`;
 
         if (assignments.length === 0) {
-            userAssignmentsTableBody.innerHTML = '<tr><td colspan="4"><div class="empty-state">Este usuario aun no tiene cuentas asignadas.</div></td></tr>';
+            userAssignmentsTableBody.innerHTML = '<tr><td colspan="5"><div class="empty-state">Este usuario aun no tiene cuentas asignadas.</div></td></tr>';
         } else {
             userAssignmentsTableBody.innerHTML = assignments.map((assignment) => `
                 <tr>
@@ -1390,6 +1394,9 @@
                     <td>${escapeHtml(assignment.account_email)}</td>
                     <td>${escapeHtml(assignment.description || 'Sin descripcion')}</td>
                     <td>${escapeHtml(assignment.account_password)}</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-danger" type="button" data-unassign-user-assignment="${assignment.assignment_id}">Desafiliar</button>
+                    </td>
                 </tr>
             `).join('');
         }
@@ -1602,7 +1609,8 @@
 
         serviceAssignUsersTableBody.innerHTML = users.map((user) => {
             const serviceAssignments = normalizeArray(user.assignments).filter((assignment) => assignment.service_name === service.nombre);
-            const alreadyAssignedToSelectedAccount = serviceAssignments.some((assignment) => Number(assignment.account_id) === selectedAccountId);
+            const selectedAccountAssignment = serviceAssignments.find((assignment) => Number(assignment.account_id) === selectedAccountId) || null;
+            const alreadyAssignedToSelectedAccount = selectedAccountAssignment !== null;
             const currentAssignmentsMarkup = serviceAssignments.length === 0
                 ? '<span class="text-secondary small">Sin asignaciones en este servicio</span>'
                 : serviceAssignments.map((assignment) => `
@@ -1619,9 +1627,9 @@
                     <td>${escapeHtml(user.email)}</td>
                     <td>${currentAssignmentsMarkup}</td>
                     <td>
-                        <button class="btn btn-sm ${alreadyAssignedToSelectedAccount ? 'btn-outline-secondary' : 'btn-primary'}" type="button" data-assign-user-id="${user.id}" ${alreadyAssignedToSelectedAccount || selectedAccountId <= 0 ? 'disabled' : ''}>
-                            ${alreadyAssignedToSelectedAccount ? 'Asignado' : 'Asignar'}
-                        </button>
+                        ${alreadyAssignedToSelectedAccount
+                            ? `<button class="btn btn-sm btn-outline-danger" type="button" data-unassign-service-modal="${selectedAccountAssignment.assignment_id}">Desasignar</button>`
+                            : `<button class="btn btn-sm btn-primary" type="button" data-assign-user-id="${user.id}" ${selectedAccountId <= 0 ? 'disabled' : ''}>Asignar</button>`}
                     </td>
                 </tr>
             `;
@@ -2204,6 +2212,45 @@
 
     serviceAssignUsersTableBody.addEventListener('click', async (event) => {
         const assignButton = event.target.closest('[data-assign-user-id]');
+        const unassignButton = event.target.closest('[data-unassign-service-modal]');
+
+        if (unassignButton) {
+            const serviceId = appState.selectedAssignServiceId;
+            const selectedAccountId = serviceAssignAccountSelect.value;
+            const confirmed = await openConfirmModal({
+                title: 'Desasignar usuario',
+                message: 'Se retirara este usuario de la cuenta seleccionada.',
+                confirmText: 'Desasignar',
+                confirmClass: 'btn btn-danger',
+            });
+
+            if (!confirmed) {
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('action', 'unassign');
+            formData.append('assignment_id', unassignButton.dataset.unassignServiceModal);
+            showAdminStatus('Desasignando usuario del servicio...', 'secondary');
+
+            try {
+                const result = await requestJson('./api/admin/assignments.php', {
+                    method: 'POST',
+                    body: formData,
+                });
+
+                showAdminStatus(result.message, 'success');
+                await loadAdminOverview();
+
+                if (serviceId !== null) {
+                    openServiceAssignUsersModal(serviceId, selectedAccountId);
+                }
+            } catch (error) {
+                showAdminStatus(error.message, 'danger');
+            }
+
+            return;
+        }
 
         if (!assignButton) {
             return;
@@ -2234,6 +2281,47 @@
 
             if (serviceId !== null) {
                 openServiceAssignUsersModal(serviceId, selectedAccountId);
+            }
+        } catch (error) {
+            showAdminStatus(error.message, 'danger');
+        }
+    });
+
+    userAssignmentsTableBody.addEventListener('click', async (event) => {
+        const unassignButton = event.target.closest('[data-unassign-user-assignment]');
+
+        if (!unassignButton) {
+            return;
+        }
+
+        const currentUserId = appState.selectedUserAssignmentsUserId;
+        const confirmed = await openConfirmModal({
+            title: 'Desafiliar cuenta',
+            message: 'Se retirara esta cuenta del usuario seleccionado.',
+            confirmText: 'Desafiliar',
+            confirmClass: 'btn btn-danger',
+        });
+
+        if (!confirmed) {
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('action', 'unassign');
+        formData.append('assignment_id', unassignButton.dataset.unassignUserAssignment);
+        showAdminStatus('Desafiliando cuenta del usuario...', 'secondary');
+
+        try {
+            const result = await requestJson('./api/admin/assignments.php', {
+                method: 'POST',
+                body: formData,
+            });
+
+            showAdminStatus(result.message, 'success');
+            await loadAdminOverview();
+
+            if (currentUserId !== null) {
+                openUserAssignmentsModal(currentUserId);
             }
         } catch (error) {
             showAdminStatus(error.message, 'danger');
