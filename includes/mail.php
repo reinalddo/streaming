@@ -350,10 +350,6 @@ function buildRecentMessageHeaderSummaries($imap, array $messageUids, string $se
                 break 2;
             }
 
-            if (!overviewMatchesSearchTerm($overview, $searchTerm) && !empty($overview->to)) {
-                continue;
-            }
-
             $messages[] = [
                 'uid' => (int) $uid,
                 'subject' => decodeMimeHeaderString((string) ($overview->subject ?? '')) ?: '[sin asunto]',
@@ -465,13 +461,20 @@ function fetchMailboxMessageBodyByUid($imap, string $searchTerm, int $messageUid
     }
 
     $rawHeaders = imap_fetchheader($imap, $messageNumber);
+    $htmlBody = getHtmlBody($imap, $messageNumber);
+    $plainTextBody = getPlainTextBody($imap, $messageNumber);
 
-    if ($rawHeaders === false || (!overviewMatchesSearchTerm($overview, $searchTerm) && !messageHeadersMatchSearchTerm($rawHeaders, $searchTerm))) {
+    if (
+        $rawHeaders === false
+        || (
+            !overviewMatchesSearchTerm($overview, $searchTerm)
+            && !messageHeadersMatchSearchTerm($rawHeaders, $searchTerm)
+            && !messageBodiesMatchSearchTerm($plainTextBody, $htmlBody, $searchTerm)
+        )
+    ) {
         throw new RuntimeException('El correo solicitado no corresponde al criterio consultado.');
     }
 
-    $htmlBody = getHtmlBody($imap, $messageNumber);
-    $plainTextBody = getPlainTextBody($imap, $messageNumber);
     $sanitizedHtml = $htmlBody !== null && trim($htmlBody) !== ''
         ? sanitizeHtmlBody($htmlBody)
         : nl2br(escapeHtmlFragment(trim($plainTextBody) !== '' ? trim($plainTextBody) : '[sin contenido]'));
@@ -509,6 +512,33 @@ function messageHeadersMatchSearchTerm(string $rawHeaders, string $searchTerm): 
     }
 
     return stripos($rawHeaders, $normalizedSearchTerm) !== false;
+}
+
+function messageBodiesMatchSearchTerm(string $plainTextBody, ?string $htmlBody, string $searchTerm): bool
+{
+    $normalizedSearchTerm = trim($searchTerm);
+
+    if ($normalizedSearchTerm === '') {
+        return false;
+    }
+
+    if ($plainTextBody !== '' && stripos($plainTextBody, $normalizedSearchTerm) !== false) {
+        return true;
+    }
+
+    if ($htmlBody !== null && $htmlBody !== '') {
+        if (stripos($htmlBody, $normalizedSearchTerm) !== false) {
+            return true;
+        }
+
+        $textContent = html_entity_decode(strip_tags($htmlBody), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+
+        if ($textContent !== '' && stripos($textContent, $normalizedSearchTerm) !== false) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 function overviewTargetsAccountEmail(object $overview, string $accountEmail): bool

@@ -289,7 +289,7 @@ header('Expires: 0');
             left: 0;
             right: 0;
             z-index: 12;
-            max-height: 320px;
+            max-height: 520px;
             overflow-y: auto;
             border: 1px solid var(--pc-border);
             border-radius: 1rem;
@@ -1754,7 +1754,9 @@ header('Expires: 0');
             return;
         }
 
-        userSearchOptions.innerHTML = assignments.map((assignment) => `
+        userSearchOptions.innerHTML = `
+            <div class="small text-secondary px-2 pb-2">${assignments.length} cuenta(s) encontrada(s)</div>
+            ${assignments.map((assignment) => `
             <button class="user-search-option" type="button" data-user-assignment-email="${escapeHtml(assignment.account_email)}">
                 <div class="service-logo" style="background:${escapeHtml(assignment.color || '#0b57d0')};">${assignment.logo_url ? `<img src="${escapeHtml(assignment.logo_url)}" alt="${escapeHtml(assignment.service_name)}">` : escapeHtml(String((assignment.service_name || '').slice(0, 1).toUpperCase()))}</div>
                 <div class="user-search-option-copy flex-grow-1">
@@ -1762,7 +1764,8 @@ header('Expires: 0');
                     <div class="small text-secondary">Cuenta: ${escapeHtml(assignment.account_email)}</div>
                 </div>
             </button>
-        `).join('');
+            `).join('')}
+        `;
         userSearchOptions.classList.remove('d-none');
     }
 
