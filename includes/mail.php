@@ -227,12 +227,13 @@ function searchRecentMessagesForAccount($imap, string $accountEmail, int $delayD
             continue;
         }
 
-        if (!messageTargetsAccountEmail($imap, $messageNumber, $accountEmail)) {
+        $htmlBody = getHtmlBody($imap, $messageNumber);
+        $plainTextBody = getPlainTextBody($imap, $messageNumber);
+
+        if (!messageTargetsAccountEmail($imap, $messageNumber, $accountEmail, $plainTextBody, $htmlBody)) {
             continue;
         }
 
-        $htmlBody = getHtmlBody($imap, $messageNumber);
-        $plainTextBody = getPlainTextBody($imap, $messageNumber);
         $sanitizedHtml = $htmlBody !== null && trim($htmlBody) !== ''
             ? sanitizeHtmlBody($htmlBody)
             : nl2br(escapeHtmlFragment(trim($plainTextBody) !== '' ? trim($plainTextBody) : '[sin contenido]'));
@@ -271,7 +272,7 @@ function configureImapTimeouts(): void
 /**
  * @param resource|\IMAP\Connection $imap
  */
-function messageTargetsAccountEmail($imap, int $messageNumber, string $accountEmail): bool
+function messageTargetsAccountEmail($imap, int $messageNumber, string $accountEmail, string $plainTextBody = '', ?string $htmlBody = null): bool
 {
     $rawHeaders = imap_fetchheader($imap, $messageNumber);
 
@@ -291,7 +292,28 @@ function messageTargetsAccountEmail($imap, int $messageNumber, string $accountEm
         'resent-to',
     ]);
 
-    return preg_match('/^(?:' . $recipientHeaderPattern . '):.*' . $quotedEmail . '/im', $normalizedHeaders) === 1;
+    if (preg_match('/^(?:' . $recipientHeaderPattern . '):.*' . $quotedEmail . '/im', $normalizedHeaders) === 1) {
+        return true;
+    }
+
+    $searchBodies = [];
+
+    if ($plainTextBody !== '') {
+        $searchBodies[] = $plainTextBody;
+    }
+
+    if ($htmlBody !== null && $htmlBody !== '') {
+        $searchBodies[] = html_entity_decode(strip_tags($htmlBody), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $searchBodies[] = $htmlBody;
+    }
+
+    foreach ($searchBodies as $bodyContent) {
+        if (stripos($bodyContent, $accountEmail) !== false) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 function parseImapOverviewDate(string $date): ?DateTimeImmutable
