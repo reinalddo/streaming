@@ -52,7 +52,23 @@ function registerUser(array $input): array
         'activo' => 1,
     ]);
 
-    return ['success' => true, 'message' => 'Usuario registrado correctamente.'];
+    $user = [
+        'id' => (int) $pdo->lastInsertId(),
+        'nombre' => $nombre,
+        'apellido' => $apellido,
+        'username' => $username,
+        'email' => $email,
+        'role' => 'usuario',
+    ];
+
+    setAuthenticatedUser($user);
+
+    return [
+        'success' => true,
+        'message' => 'Usuario registrado correctamente.',
+        'role' => 'usuario',
+        'user' => $user,
+    ];
 }
 
 function loginUser(array $input): array

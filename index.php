@@ -36,18 +36,25 @@ header('Expires: 0');
         }
 
         .auth-shell,
+        .user-shell,
         .admin-shell {
             width: 100%;
             padding: 1.25rem;
         }
 
-        .auth-shell {
+        .auth-shell,
+        .user-shell {
             min-height: 100vh;
         }
 
         .auth-container {
             width: 100%;
             max-width: 760px;
+        }
+
+        .user-container {
+            width: 100%;
+            max-width: 980px;
         }
 
         .admin-container {
@@ -217,6 +224,120 @@ header('Expires: 0');
             font-weight: 600;
         }
 
+        .user-search-hero {
+            display: grid;
+            gap: 1rem;
+        }
+
+        .user-profile-card {
+            border: 1px solid var(--pc-border);
+            border-radius: 1.25rem;
+            padding: 1.1rem;
+            background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+        }
+
+        .user-profile-grid {
+            display: grid;
+            gap: 0.9rem;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        }
+
+        .user-profile-metric {
+            border: 1px solid var(--pc-border);
+            border-radius: 1rem;
+            padding: 0.9rem;
+            background: #fff;
+        }
+
+        .user-profile-label {
+            display: block;
+            color: var(--pc-muted);
+            font-size: 0.8rem;
+            margin-bottom: 0.35rem;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        .user-assignment-grid {
+            display: grid;
+            gap: 1rem;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        }
+
+        .user-assignment-card {
+            border: 1px solid var(--pc-border);
+            border-radius: 1.2rem;
+            background: #fff;
+            padding: 1rem;
+            box-shadow: 0 16px 30px rgba(24, 33, 47, 0.06);
+        }
+
+        .user-actions {
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
+
+        .user-search-select {
+            position: relative;
+        }
+
+        .user-search-options {
+            position: absolute;
+            top: calc(100% + 0.45rem);
+            left: 0;
+            right: 0;
+            z-index: 12;
+            max-height: 320px;
+            overflow-y: auto;
+            border: 1px solid var(--pc-border);
+            border-radius: 1rem;
+            background: #fff;
+            box-shadow: 0 18px 40px rgba(24, 33, 47, 0.14);
+            padding: 0.45rem;
+        }
+
+        .user-search-option {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            gap: 0.85rem;
+            border: 0;
+            background: transparent;
+            border-radius: 0.9rem;
+            padding: 0.75rem;
+            text-align: left;
+        }
+
+        .user-search-option:hover,
+        .user-search-option:focus {
+            background: #f8fbff;
+        }
+
+        .user-search-option-copy {
+            min-width: 0;
+        }
+
+        .user-search-option-copy .fw-semibold,
+        .user-search-option-copy .small {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .btn-user-search {
+            min-height: 60px;
+            border-radius: 1rem;
+            font-weight: 700;
+            letter-spacing: 0.01em;
+            box-shadow: 0 16px 28px rgba(11, 87, 208, 0.22);
+        }
+
+        .btn-user-search .bi {
+            font-size: 1rem;
+        }
+
         .empty-state {
             border: 1px dashed #cbd5e1;
             border-radius: 1rem;
@@ -344,6 +465,7 @@ header('Expires: 0');
 
         @media (min-width: 992px) {
             .auth-shell,
+            .user-shell,
             .admin-shell {
                 padding: 2rem;
             }
@@ -434,6 +556,56 @@ header('Expires: 0');
                                     <button class="btn btn-primary btn-lg" type="submit">Crear cuenta</button>
                                 </div>
                             </form>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </section>
+
+    <section id="userView" class="user-shell d-none align-items-center justify-content-center">
+        <div class="container user-container">
+            <section class="card surface-card">
+                <div class="card-body p-4 p-lg-5">
+                    <div class="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-4">
+                        <div>
+                            <p class="text-primary fw-semibold mb-1">Módulo de usuario</p>
+                            <h1 class="h3 mb-2">Consulta tu información por correo</h1>
+                            <p class="text-secondary mb-0">Escribe tu correo registrado para revisar los datos y las cuentas que tienes asignadas.</p>
+                        </div>
+                        <div class="user-actions">
+                            <button id="openUserProfileButton" class="btn btn-primary" type="button">Cambiar mis datos</button>
+                            <div id="userIdentity" class="admin-identity"></div>
+                            <button id="userLogoutButton" class="btn btn-outline-secondary" type="button">Cerrar sesión</button>
+                        </div>
+                    </div>
+
+                    <div id="userStatusMessage" class="small text-secondary mb-4"></div>
+
+                    <div class="user-search-hero">
+                        <div class="dashboard-block">
+                            <form id="userSearchForm" class="row g-3 align-items-end" novalidate>
+                                <div class="col-12 col-lg-9">
+                                    <label class="form-label" for="userSearchEmail">Correo a consultar</label>
+                                    <div class="user-search-select">
+                                        <input class="form-control" type="text" id="userSearchEmail" name="email" placeholder="Escriba el correo a consultar" autocomplete="off" required>
+                                        <div id="userSearchOptions" class="user-search-options d-none"></div>
+                                    </div>
+                                    <div id="userSearchHelp" class="form-text">Solo puedes buscar correos de cuentas que ya estén asignadas a tu usuario.</div>
+                                </div>
+                                <div class="col-12 col-lg-3 d-grid">
+                                    <button id="userSearchButton" class="btn btn-primary btn-lg btn-user-search" type="submit">
+                                        <span class="d-inline-flex align-items-center justify-content-center gap-2">
+                                            <i class="bi bi-search"></i>
+                                            Buscar información
+                                        </span>
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <div id="userSearchResults" class="dashboard-block">
+                            <div class="empty-state">Ingresa un correo y presiona Buscar información para ver los resultados.</div>
                         </div>
                     </div>
                 </div>
@@ -991,15 +1163,68 @@ header('Expires: 0');
     </div>
 </div>
 
+<div class="modal fade" id="userProfileModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div>
+                    <h2 class="h5 mb-1">Actualizar mis datos</h2>
+                    <p class="small text-secondary mb-0">Modifica tu información de registro y guarda los cambios.</p>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <form id="userProfileForm" class="row g-3" novalidate>
+                    <div class="col-12 col-md-6">
+                        <label class="form-label" for="userProfileNombre">Nombre</label>
+                        <input class="form-control" type="text" id="userProfileNombre" name="nombre" required>
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <label class="form-label" for="userProfileApellido">Apellido</label>
+                        <input class="form-control" type="text" id="userProfileApellido" name="apellido" required>
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <label class="form-label" for="userProfileUsername">Usuario</label>
+                        <input class="form-control" type="text" id="userProfileUsername" name="username" required>
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <label class="form-label" for="userProfileTelefono">Teléfono</label>
+                        <input class="form-control" type="text" id="userProfileTelefono" name="telefono">
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label" for="userProfileEmail">Correo electrónico</label>
+                        <input class="form-control" type="email" id="userProfileEmail" name="email" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button id="saveUserProfileButton" type="button" class="btn btn-primary">Guardar cambios</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
 <script>
     const authView = document.getElementById('authView');
+    const userView = document.getElementById('userView');
     const adminView = document.getElementById('adminView');
     const statusMessage = document.getElementById('statusMessage');
+    const userStatusMessage = document.getElementById('userStatusMessage');
     const adminStatusMessage = document.getElementById('adminStatusMessage');
+    const userIdentity = document.getElementById('userIdentity');
     const adminIdentity = document.getElementById('adminIdentity');
     const loginForm = document.getElementById('loginForm');
     const registerForm = document.getElementById('registerForm');
+    const userSearchForm = document.getElementById('userSearchForm');
+    const userSearchEmail = document.getElementById('userSearchEmail');
+    const userSearchOptions = document.getElementById('userSearchOptions');
+    const userSearchHelp = document.getElementById('userSearchHelp');
+    const userSearchButton = document.getElementById('userSearchButton');
+    const userSearchResults = document.getElementById('userSearchResults');
+    const openUserProfileButton = document.getElementById('openUserProfileButton');
+    const userLogoutButton = document.getElementById('userLogoutButton');
     const logoutButton = document.getElementById('logoutButton');
 
     const serviceForm = document.getElementById('serviceForm');
@@ -1097,10 +1322,24 @@ header('Expires: 0');
     const copyPasswordRevealButton = document.getElementById('copyPasswordRevealButton');
     const passwordRevealModal = new bootstrap.Modal(passwordRevealModalElement);
 
+    const userProfileModalElement = document.getElementById('userProfileModal');
+    const userProfileForm = document.getElementById('userProfileForm');
+    const userProfileNombre = document.getElementById('userProfileNombre');
+    const userProfileApellido = document.getElementById('userProfileApellido');
+    const userProfileUsername = document.getElementById('userProfileUsername');
+    const userProfileTelefono = document.getElementById('userProfileTelefono');
+    const userProfileEmail = document.getElementById('userProfileEmail');
+    const saveUserProfileButton = document.getElementById('saveUserProfileButton');
+    const userProfileModal = new bootstrap.Modal(userProfileModalElement);
+
     const passwordToggleButtons = document.querySelectorAll('[data-password-target]');
 
     const appState = {
         user: null,
+        userModule: {
+            profile: null,
+            assignments: [],
+        },
         selectedServiceId: null,
         selectedAssignServiceId: null,
         selectedAssignedUsersAccountId: null,
@@ -1124,9 +1363,22 @@ header('Expires: 0');
         statusMessage.textContent = message;
     }
 
+    function showUserStatus(message, tone = 'secondary') {
+        userStatusMessage.className = `small text-${tone} mb-4`;
+        userStatusMessage.textContent = message;
+    }
+
     function showAdminStatus(message, tone = 'secondary') {
         adminStatusMessage.className = `small text-${tone} mb-4`;
         adminStatusMessage.textContent = message;
+    }
+
+    function getUserModuleAssignments() {
+        return normalizeArray(appState.userModule.assignments);
+    }
+
+    function getUserModuleProfile() {
+        return appState.userModule.profile || appState.user;
     }
 
     function escapeHtml(value) {
@@ -1286,11 +1538,217 @@ header('Expires: 0');
         `;
     }
 
+    function filterUserAssignmentOptions(query = '') {
+        const normalizedQuery = query.trim().toLowerCase();
+
+        return getUserModuleAssignments().filter((assignment) => {
+            const haystack = [assignment.service_name, assignment.account_email, assignment.description || ''].join(' ').toLowerCase();
+            return haystack.includes(normalizedQuery);
+        });
+    }
+
+    function hideUserSearchOptions() {
+        userSearchOptions.classList.add('d-none');
+        userSearchOptions.innerHTML = '';
+    }
+
+    function renderUserSearchOptions(query = '', { forceOpen = false } = {}) {
+        const assignments = filterUserAssignmentOptions(query);
+
+        if (assignments.length === 0) {
+            userSearchOptions.innerHTML = '<div class="empty-state py-3">No tienes cuentas asignadas disponibles para consultar.</div>';
+            userSearchOptions.classList.toggle('d-none', !forceOpen);
+            return;
+        }
+
+        userSearchOptions.innerHTML = assignments.map((assignment) => `
+            <button class="user-search-option" type="button" data-user-assignment-email="${escapeHtml(assignment.account_email)}">
+                <div class="service-logo" style="background:${escapeHtml(assignment.color || '#0b57d0')};">${assignment.logo_url ? `<img src="${escapeHtml(assignment.logo_url)}" alt="${escapeHtml(assignment.service_name)}">` : escapeHtml(String((assignment.service_name || '').slice(0, 1).toUpperCase()))}</div>
+                <div class="user-search-option-copy flex-grow-1">
+                    <div class="fw-semibold">${escapeHtml(assignment.service_name)}</div>
+                    <div class="small text-secondary">Cuenta: ${escapeHtml(assignment.account_email)}</div>
+                </div>
+            </button>
+        `).join('');
+        userSearchOptions.classList.remove('d-none');
+    }
+
+    function populateUserProfileForm() {
+        const profile = getUserModuleProfile();
+
+        if (!profile) {
+            return;
+        }
+
+        userProfileNombre.value = profile.nombre || '';
+        userProfileApellido.value = profile.apellido || '';
+        userProfileUsername.value = profile.username || '';
+        userProfileTelefono.value = profile.telefono || '';
+        userProfileEmail.value = profile.email || '';
+    }
+
+    function renderUserModuleEmptyState(message) {
+        userSearchResults.innerHTML = `<div class="empty-state">${escapeHtml(message)}</div>`;
+    }
+
+    async function loadUserModuleOverview() {
+        const result = await requestJson('./api/user/overview.php');
+        appState.userModule.profile = result.user || null;
+        appState.userModule.assignments = normalizeArray(result.assignments);
+        appState.user = {
+            ...(appState.user || {}),
+            ...(result.user || {}),
+            role: 'usuario',
+        };
+        userIdentity.textContent = `${appState.user.nombre} ${appState.user.apellido} · ${appState.user.username}`;
+        userSearchEmail.value = '';
+        userSearchEmail.placeholder = 'Escriba el correo a consultar';
+        userSearchHelp.textContent = result.assignments.length > 0
+            ? 'Solo puedes buscar correos de cuentas que ya estén asignadas a tu usuario.'
+            : 'Aún no tienes cuentas asignadas. Cuando tengas una, aparecerá aquí para consultarla.';
+        userSearchEmail.disabled = result.assignments.length === 0;
+        userSearchButton.disabled = result.assignments.length === 0;
+        openUserProfileButton.disabled = false;
+        hideUserSearchOptions();
+        populateUserProfileForm();
+
+        if (result.assignments.length === 0) {
+            renderUserModuleEmptyState('Todavía no tienes cuentas asignadas para consultar.');
+        } else {
+            renderUserModuleEmptyState('Escribe o selecciona una cuenta asignada y presiona Buscar información para ver los resultados.');
+        }
+    }
+
+    async function animateViewSwap(fromView, toView) {
+        if (!fromView || !toView || fromView === toView) {
+            return;
+        }
+
+        if (!fromView.classList.contains('d-none')) {
+            const hideAnimation = fromView.animate([
+                { opacity: 1, transform: 'translateY(0)' },
+                { opacity: 0, transform: 'translateY(22px)' },
+            ], {
+                duration: 260,
+                easing: 'ease',
+                fill: 'forwards',
+            });
+
+            await hideAnimation.finished.catch(() => undefined);
+            fromView.classList.add('d-none');
+            fromView.style.opacity = '';
+            fromView.style.transform = '';
+        }
+
+        toView.classList.remove('d-none');
+        const showAnimation = toView.animate([
+            { opacity: 0, transform: 'translateY(22px)' },
+            { opacity: 1, transform: 'translateY(0)' },
+        ], {
+            duration: 320,
+            easing: 'ease',
+            fill: 'forwards',
+        });
+
+        await showAnimation.finished.catch(() => undefined);
+        toView.style.opacity = '';
+        toView.style.transform = '';
+    }
+
+    function renderUserSearchResult(result) {
+        if (!result.found) {
+            renderUserModuleEmptyState('No se encontró información para esa cuenta.');
+            return;
+        }
+
+        const assignments = normalizeArray(result.assignments);
+        const user = result.user || {};
+        const assignmentsMarkup = assignments.length === 0
+            ? '<div class="empty-state">Este usuario no tiene cuentas asignadas por ahora.</div>'
+            : `<div class="user-assignment-grid">${assignments.map((assignment) => `
+                <article class="user-assignment-card">
+                    <div class="d-flex align-items-center gap-3 mb-3">
+                        <div class="service-logo" style="background:${escapeHtml(assignment.color || '#0b57d0')};">${assignment.logo_url ? `<img src="${escapeHtml(assignment.logo_url)}" alt="${escapeHtml(assignment.service_name)}">` : escapeHtml(String((assignment.service_name || '').slice(0, 1).toUpperCase()))}</div>
+                        <div>
+                            <div class="fw-semibold">${escapeHtml(assignment.service_name)}</div>
+                            <div class="small text-secondary">${escapeHtml(assignment.account_email)}</div>
+                        </div>
+                    </div>
+                    <div class="small text-secondary mb-1">Descripción</div>
+                    <div class="mb-3">${escapeHtml(assignment.description || 'Sin descripción')}</div>
+                    <div class="small text-secondary mb-1">Clave asignada</div>
+                    <div class="fw-semibold">${escapeHtml(assignment.account_password)}</div>
+                </article>
+            `).join('')}</div>`;
+
+        userSearchResults.innerHTML = `
+            <div class="user-profile-card mb-4">
+                <div class="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-3">
+                    <div>
+                        <p class="text-primary fw-semibold mb-1">Información encontrada</p>
+                        <h2 class="h4 mb-1">${escapeHtml(user.nombre || '')} ${escapeHtml(user.apellido || '')}</h2>
+                        <div class="text-secondary">@${escapeHtml(user.username || '')}</div>
+                    </div>
+                    ${Number(user.activo) === 1 ? '<span class="badge text-bg-success">Activo</span>' : '<span class="badge text-bg-secondary">Inactivo</span>'}
+                </div>
+                <div class="user-profile-grid">
+                    <div class="user-profile-metric">
+                        <span class="user-profile-label">Correo</span>
+                        <div>${escapeHtml(user.email || '')}</div>
+                    </div>
+                    <div class="user-profile-metric">
+                        <span class="user-profile-label">Teléfono</span>
+                        <div>${escapeHtml(user.telefono || 'Sin teléfono')}</div>
+                    </div>
+                    <div class="user-profile-metric">
+                        <span class="user-profile-label">Cuentas asignadas</span>
+                        <div>${assignments.length} cuenta(s)</div>
+                    </div>
+                </div>
+            </div>
+            ${assignmentsMarkup}
+        `;
+    }
+
+    async function enterUserMode(user, { animate = false } = {}) {
+        appState.user = user;
+        adminView.classList.add('d-none');
+        userIdentity.textContent = `${user.nombre} ${user.apellido} · ${user.username}`;
+        userSearchEmail.value = '';
+        userSearchEmail.placeholder = 'Escriba el correo a consultar';
+        renderUserModuleEmptyState('Escribe o selecciona una cuenta asignada y presiona Buscar información para ver los resultados.');
+        showUserStatus('', 'secondary');
+
+        if (animate) {
+            await animateViewSwap(authView, userView);
+        } else {
+            authView.classList.add('d-none');
+            userView.classList.remove('d-none');
+        }
+
+        await loadUserModuleOverview();
+    }
+
     function enterAdminMode(user) {
         appState.user = user;
         authView.classList.add('d-none');
+        userView.classList.add('d-none');
         adminView.classList.remove('d-none');
         adminIdentity.textContent = `${user.nombre} ${user.apellido} · ${user.username}`;
+    }
+
+    function leaveUserMode() {
+        appState.user = null;
+        appState.userModule = {
+            profile: null,
+            assignments: [],
+        };
+        userSearchForm.reset();
+        hideUserSearchOptions();
+        renderUserModuleEmptyState('Escribe o selecciona una cuenta asignada y presiona Buscar información para ver los resultados.');
+        showUserStatus('', 'secondary');
+        userView.classList.add('d-none');
+        authView.classList.remove('d-none');
     }
 
     function leaveAdminMode() {
@@ -1976,9 +2434,13 @@ header('Expires: 0');
         try {
             const session = await requestJson('./api/session.php');
 
-            if (session.authenticated && session.user && session.user.role === 'admin') {
-                enterAdminMode(session.user);
-                await loadAdminOverview();
+            if (session.authenticated && session.user) {
+                if (session.user.role === 'admin') {
+                    enterAdminMode(session.user);
+                    await loadAdminOverview();
+                } else if (session.user.role === 'usuario') {
+                    await enterUserMode(session.user);
+                }
             }
         } catch (error) {
             console.error(error);
@@ -2060,6 +2522,8 @@ header('Expires: 0');
             if (result.role === 'admin' && result.user) {
                 enterAdminMode(result.user);
                 await loadAdminOverview();
+            } else if (result.role === 'usuario' && result.user) {
+                await enterUserMode(result.user, { animate: true });
             }
         } catch (error) {
             console.log('Usuario No existe');
@@ -2079,8 +2543,111 @@ header('Expires: 0');
 
             showStatus(result.message, 'success');
             registerForm.reset();
+
+             if (result.role === 'usuario' && result.user) {
+                await enterUserMode(result.user, { animate: true });
+            }
         } catch (error) {
             showStatus(error.message, 'danger');
+        }
+    });
+
+    userSearchForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const selectedEmail = userSearchEmail.value.trim().toLowerCase();
+
+        if (!getUserModuleAssignments().some((assignment) => String(assignment.account_email).toLowerCase() === selectedEmail)) {
+            showUserStatus('Debes seleccionar una de las cuentas asignadas a tu usuario.', 'danger');
+            renderUserModuleEmptyState('Selecciona una cuenta válida desde el listado para consultar su información.');
+            renderUserSearchOptions(userSearchEmail.value, { forceOpen: true });
+            return;
+        }
+
+        hideUserSearchOptions();
+        showUserStatus('Buscando información de la cuenta seleccionada...', 'secondary');
+
+        try {
+            const result = await requestJson('./api/user/search.php', {
+                method: 'POST',
+                body: new FormData(userSearchForm),
+            });
+
+            renderUserSearchResult(result);
+            showUserStatus(result.message, result.found === false ? 'warning' : 'success');
+        } catch (error) {
+            userSearchResults.innerHTML = '<div class="empty-state">No fue posible cargar la información solicitada.</div>';
+            showUserStatus(error.message, 'danger');
+        }
+    });
+
+    userSearchEmail.addEventListener('focus', () => {
+        renderUserSearchOptions(userSearchEmail.value, { forceOpen: true });
+    });
+
+    userSearchEmail.addEventListener('click', () => {
+        renderUserSearchOptions(userSearchEmail.value, { forceOpen: true });
+    });
+
+    userSearchEmail.addEventListener('input', () => {
+        renderUserSearchOptions(userSearchEmail.value, { forceOpen: true });
+    });
+
+    userSearchOptions.addEventListener('click', (event) => {
+        const option = event.target.closest('[data-user-assignment-email]');
+
+        if (!option) {
+            return;
+        }
+
+        userSearchEmail.value = option.dataset.userAssignmentEmail || '';
+        hideUserSearchOptions();
+        showUserStatus('Cuenta seleccionada. Presiona Buscar información para consultar los datos.', 'secondary');
+    });
+
+    document.addEventListener('click', (event) => {
+        if (event.target.closest('.user-search-select')) {
+            return;
+        }
+
+        hideUserSearchOptions();
+    });
+
+    openUserProfileButton.addEventListener('click', () => {
+        populateUserProfileForm();
+        userProfileModal.show();
+    });
+
+    saveUserProfileButton.addEventListener('click', async () => {
+        showUserStatus('Guardando tus datos...', 'secondary');
+
+        try {
+            const result = await requestJson('./api/user/profile.php', {
+                method: 'POST',
+                body: new FormData(userProfileForm),
+            });
+
+            appState.user = {
+                ...(appState.user || {}),
+                ...(result.user || {}),
+                role: 'usuario',
+            };
+            appState.userModule.profile = result.user || null;
+            appState.userModule.assignments = normalizeArray(result.assignments);
+            userIdentity.textContent = `${appState.user.nombre} ${appState.user.apellido} · ${appState.user.username}`;
+            userProfileModal.hide();
+            userSearchEmail.value = '';
+            hideUserSearchOptions();
+            renderUserModuleEmptyState(appState.userModule.assignments.length === 0
+                ? 'Todavía no tienes cuentas asignadas para consultar.'
+                : 'Tus datos fueron actualizados. Selecciona una cuenta asignada para consultar la información.');
+            userSearchHelp.textContent = appState.userModule.assignments.length > 0
+                ? 'Solo puedes buscar correos de cuentas que ya estén asignadas a tu usuario.'
+                : 'Aún no tienes cuentas asignadas. Cuando tengas una, aparecerá aquí para consultarla.';
+            userSearchEmail.disabled = appState.userModule.assignments.length === 0;
+            userSearchButton.disabled = appState.userModule.assignments.length === 0;
+            showUserStatus(result.message, 'success');
+        } catch (error) {
+            showUserStatus(error.message, 'danger');
         }
     });
 
@@ -2859,6 +3426,16 @@ header('Expires: 0');
             showStatus('Sesión cerrada.', 'secondary');
         } catch (error) {
             showAdminStatus(error.message, 'danger');
+        }
+    });
+
+    userLogoutButton.addEventListener('click', async () => {
+        try {
+            await requestJson('./api/logout.php', { method: 'POST' });
+            leaveUserMode();
+            showStatus('Sesión cerrada.', 'secondary');
+        } catch (error) {
+            showUserStatus(error.message, 'danger');
         }
     });
 
