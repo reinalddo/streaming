@@ -1409,6 +1409,8 @@
         registeredUsersTableBody.innerHTML = users.map((user) => {
             const assignmentCount = normalizeArray(user.assignments).length;
             const assignmentsLabel = assignmentCount === 1 ? '1 cuenta asignada' : `${assignmentCount} cuentas asignadas`;
+            const canDeleteUser = assignmentCount === 0;
+            const deleteHelp = canDeleteUser ? 'Eliminar usuario' : 'No puedes eliminar usuarios con cuentas asignadas';
 
             return `
                 <tr>
@@ -1424,7 +1426,7 @@
                     <td>
                         <div class="d-flex gap-2 flex-wrap">
                             <button class="btn btn-sm btn-outline-primary" type="button" data-edit-user="${user.id}">Editar</button>
-                            <button class="btn btn-sm btn-outline-danger" type="button" data-delete-user="${user.id}">Eliminar</button>
+                            <button class="btn btn-sm btn-outline-danger" type="button" data-delete-user="${user.id}" title="${escapeHtml(deleteHelp)}" ${canDeleteUser ? '' : 'disabled'}>Eliminar</button>
                         </div>
                     </td>
                 </tr>

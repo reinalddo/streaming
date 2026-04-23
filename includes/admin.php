@@ -559,6 +559,13 @@ function deleteRegisteredUser(array $input): array
     }
 
     $pdo = getPdo();
+    $assignmentCountStmt = $pdo->prepare('SELECT COUNT(*) FROM usuario_cuentas_servicio WHERE usuario_id = :usuario_id');
+    $assignmentCountStmt->execute(['usuario_id' => $userId]);
+
+    if ((int) $assignmentCountStmt->fetchColumn() > 0) {
+        return ['success' => false, 'message' => 'No puedes eliminar un usuario que tiene cuentas asignadas.'];
+    }
+
     $stmt = $pdo->prepare("DELETE FROM usuarios WHERE id = :id AND role = 'usuario'");
     $stmt->execute(['id' => $userId]);
 
