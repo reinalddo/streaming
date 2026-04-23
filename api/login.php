@@ -3,8 +3,11 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../includes/auth.php';
+require_once __DIR__ . '/../includes/session.php';
 
 header('Content-Type: application/json; charset=UTF-8');
+
+ensureSessionStarted();
 
 try {
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {

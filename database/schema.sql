@@ -17,3 +17,48 @@ CREATE TABLE IF NOT EXISTS usuarios (
     KEY idx_usuarios_role (role),
     KEY idx_usuarios_activo (activo)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS servicios (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    nombre VARCHAR(120) NOT NULL,
+    slug VARCHAR(140) NOT NULL,
+    logo_url VARCHAR(255) NULL,
+    color_destacado VARCHAR(20) NOT NULL DEFAULT '#0b57d0',
+    descripcion TEXT NULL,
+    activo TINYINT(1) NOT NULL DEFAULT 1,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_servicios_nombre (nombre),
+    UNIQUE KEY uq_servicios_slug (slug),
+    KEY idx_servicios_activo (activo)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS cuentas_servicio (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    servicio_id BIGINT UNSIGNED NOT NULL,
+    correo_acceso VARCHAR(190) NOT NULL,
+    password_acceso VARCHAR(255) NOT NULL,
+    descripcion TEXT NULL,
+    activo TINYINT(1) NOT NULL DEFAULT 1,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_cuentas_servicio_correo (servicio_id, correo_acceso),
+    KEY idx_cuentas_servicio_servicio (servicio_id),
+    KEY idx_cuentas_servicio_activo (activo),
+    CONSTRAINT fk_cuentas_servicio_servicio FOREIGN KEY (servicio_id) REFERENCES servicios (id) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS usuario_cuentas_servicio (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    usuario_id BIGINT UNSIGNED NOT NULL,
+    cuenta_servicio_id BIGINT UNSIGNED NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_usuario_cuenta_servicio (usuario_id, cuenta_servicio_id),
+    KEY idx_usuario_cuentas_usuario (usuario_id),
+    KEY idx_usuario_cuentas_cuenta (cuenta_servicio_id),
+    CONSTRAINT fk_usuario_cuentas_usuario FOREIGN KEY (usuario_id) REFERENCES usuarios (id) ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT fk_usuario_cuentas_cuenta FOREIGN KEY (cuenta_servicio_id) REFERENCES cuentas_servicio (id) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

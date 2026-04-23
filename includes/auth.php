@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/session.php';
 
 function registerUser(array $input): array
 {
@@ -65,7 +66,7 @@ function loginUser(array $input): array
     }
 
     $pdo = getPdo();
-    $stmt = $pdo->prepare('SELECT id, password_hash, role, activo FROM usuarios WHERE username = :identifier OR email = :email LIMIT 1');
+    $stmt = $pdo->prepare('SELECT id, nombre, apellido, username, email, password_hash, role, activo FROM usuarios WHERE username = :identifier OR email = :email LIMIT 1');
     $stmt->execute([
         'identifier' => $identifier,
         'email' => $normalizedEmail,
@@ -76,8 +77,23 @@ function loginUser(array $input): array
         return ['success' => false, 'exists' => false, 'message' => 'Usuario No existe'];
     }
 
+    setAuthenticatedUser($user);
+
     $updateStmt = $pdo->prepare('UPDATE usuarios SET ultimo_login_at = NOW() WHERE id = :id');
     $updateStmt->execute(['id' => $user['id']]);
 
-    return ['success' => true, 'exists' => true, 'message' => 'Usuario Existe', 'role' => $user['role']];
+    return [
+        'success' => true,
+        'exists' => true,
+        'message' => 'Usuario Existe',
+        'role' => $user['role'],
+        'user' => [
+            'id' => (int) $user['id'],
+            'nombre' => (string) $user['nombre'],
+            'apellido' => (string) $user['apellido'],
+            'username' => (string) $user['username'],
+            'email' => (string) $user['email'],
+            'role' => (string) $user['role'],
+        ],
+    ];
 }
