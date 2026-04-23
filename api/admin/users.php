@@ -19,6 +19,8 @@ try {
         $result = createRegisteredUser($_POST);
     } elseif ($action === 'update') {
         $result = updateRegisteredUser($_POST);
+    } elseif ($action === 'reset_password') {
+        $result = resetRegisteredUserPassword($_POST);
     } elseif ($action === 'delete') {
         $result = deleteRegisteredUser($_POST);
     } else {

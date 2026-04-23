@@ -548,6 +548,40 @@ function createRegisteredUser(array $input): array
     return ['success' => true, 'message' => 'Usuario creado correctamente desde administración.'];
 }
 
+function resetRegisteredUserPassword(array $input): array
+{
+    requireAdminUser();
+
+    $userId = (int) ($input['usuario_id'] ?? 0);
+
+    if ($userId <= 0) {
+        return ['success' => false, 'message' => 'Debes indicar el usuario al que deseas restablecer la clave.'];
+    }
+
+    $pdo = getPdo();
+    $userStmt = $pdo->prepare("SELECT id, nombre, apellido FROM usuarios WHERE id = :id AND role = 'usuario' LIMIT 1");
+    $userStmt->execute(['id' => $userId]);
+    $user = $userStmt->fetch();
+
+    if ($user === false) {
+        return ['success' => false, 'message' => 'El usuario indicado no existe o no puede modificarse.'];
+    }
+
+    $temporaryPassword = generateTemporaryUserPassword();
+    $updateStmt = $pdo->prepare("UPDATE usuarios SET password_hash = :password_hash WHERE id = :id AND role = 'usuario'");
+    $updateStmt->execute([
+        'password_hash' => password_hash($temporaryPassword, PASSWORD_DEFAULT),
+        'id' => $userId,
+    ]);
+
+    return [
+        'success' => true,
+        'message' => 'La clave del usuario fue restablecida correctamente.',
+        'temporary_password' => $temporaryPassword,
+        'user_full_name' => trim((string) $user['nombre'] . ' ' . (string) $user['apellido']),
+    ];
+}
+
 function deleteRegisteredUser(array $input): array
 {
     requireAdminUser();
@@ -595,6 +629,19 @@ function slugify(string $value): string
     $normalized = trim($normalized, '-');
 
     return $normalized !== '' ? $normalized : 'servicio';
+}
+
+function generateTemporaryUserPassword(int $length = 12): string
+{
+    $alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%*';
+    $maxIndex = strlen($alphabet) - 1;
+    $password = '';
+
+    for ($index = 0; $index < $length; $index++) {
+        $password .= $alphabet[random_int(0, $maxIndex)];
+    }
+
+    return $password;
 }
 
 function uniqueServiceSlug(PDO $pdo, string $baseSlug): string

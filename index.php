@@ -1,4 +1,13 @@
-<?php declare(strict_types=1); ?>
+<?php
+
+declare(strict_types=1);
+
+header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+header('Cache-Control: post-check=0, pre-check=0', false);
+header('Pragma: no-cache');
+header('Expires: 0');
+
+?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -887,6 +896,29 @@
     </div>
 </div>
 
+<div class="modal fade" id="passwordRevealModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="passwordRevealModalTitle" class="h5 mb-0">Clave generada</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <p id="passwordRevealModalMessage" class="mb-3"></p>
+                <label class="form-label" for="passwordRevealField">Clave visible una sola vez</label>
+                <div class="input-group">
+                    <input class="form-control" type="text" id="passwordRevealField" readonly>
+                    <button id="copyPasswordRevealButton" class="btn btn-outline-secondary" type="button">Copiar</button>
+                </div>
+                <div id="passwordRevealModalHint" class="form-text">Guárdala ahora porque no volverá a mostrarse.</div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Aceptar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
 <script>
     const authView = document.getElementById('authView');
@@ -970,6 +1002,14 @@
     const feedbackModalBody = document.getElementById('feedbackModalBody');
     const feedbackModal = new bootstrap.Modal(feedbackModalElement);
 
+    const passwordRevealModalElement = document.getElementById('passwordRevealModal');
+    const passwordRevealModalTitle = document.getElementById('passwordRevealModalTitle');
+    const passwordRevealModalMessage = document.getElementById('passwordRevealModalMessage');
+    const passwordRevealField = document.getElementById('passwordRevealField');
+    const passwordRevealModalHint = document.getElementById('passwordRevealModalHint');
+    const copyPasswordRevealButton = document.getElementById('copyPasswordRevealButton');
+    const passwordRevealModal = new bootstrap.Modal(passwordRevealModalElement);
+
     const passwordToggleButtons = document.querySelectorAll('[data-password-target]');
 
     const appState = {
@@ -986,6 +1026,9 @@
             users: [],
         },
     };
+
+    const historyGuardUrl = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+    let historyGuardArmed = false;
 
     function showStatus(message, tone = 'secondary') {
         statusMessage.className = `small text-${tone}`;
@@ -1016,10 +1059,35 @@
             ...options,
         });
 
-        const data = await response.json();
+        const responseText = await response.text();
+        const contentType = (response.headers.get('content-type') || '').toLowerCase();
+        let data = null;
+
+        if (responseText !== '') {
+            try {
+                data = JSON.parse(responseText);
+            } catch (error) {
+                console.error('Respuesta no JSON recibida', {
+                    url,
+                    status: response.status,
+                    contentType,
+                    bodyPreview: responseText.slice(0, 300),
+                });
+
+                const fallbackMessage = responseText.trim().startsWith('<')
+                    ? 'El servidor devolvió una respuesta no válida. Recarga la página e inténtalo de nuevo.'
+                    : 'No fue posible interpretar la respuesta del servidor.';
+
+                throw new Error(fallbackMessage);
+            }
+        }
 
         if (!response.ok) {
-            throw new Error(data.message || 'Ocurrio un error al procesar la solicitud.');
+            throw new Error(data?.message || 'Ocurrió un error al procesar la solicitud.');
+        }
+
+        if (data === null) {
+            throw new Error('El servidor no devolvió datos válidos.');
         }
 
         return data;
@@ -1247,6 +1315,24 @@
         feedbackModal.show();
     }
 
+    function showPasswordRevealModal({ title, message, password, hint = 'Guárdala ahora porque no volverá a mostrarse.' }) {
+        passwordRevealModalTitle.textContent = title;
+        passwordRevealModalMessage.textContent = message;
+        passwordRevealField.value = password;
+        passwordRevealModalHint.textContent = hint;
+        passwordRevealModal.show();
+    }
+
+    function armHistoryGuard() {
+        if (historyGuardArmed) {
+            return;
+        }
+
+        history.replaceState({ prycorreosBase: true }, document.title, historyGuardUrl);
+        history.pushState({ prycorreosGuard: true }, document.title, historyGuardUrl);
+        historyGuardArmed = true;
+    }
+
     function settleConfirmModal(result) {
         if (typeof appState.confirmResolver === 'function') {
             const resolver = appState.confirmResolver;
@@ -1433,6 +1519,7 @@
                     <td>
                         <div class="d-flex gap-2 flex-wrap">
                             <button class="btn btn-sm btn-outline-primary" type="button" data-edit-user="${user.id}">Editar</button>
+                            <button class="btn btn-sm btn-outline-secondary" type="button" data-reset-user-password="${user.id}">Restablecer clave</button>
                             <button class="btn btn-sm btn-outline-danger" type="button" data-delete-user="${user.id}" title="${escapeHtml(deleteHelp)}" ${canDeleteUser ? '' : 'disabled'}>Eliminar</button>
                         </div>
                     </td>
@@ -1702,6 +1789,36 @@
         }
     }
 
+    copyPasswordRevealButton.addEventListener('click', async () => {
+        if (passwordRevealField.value === '') {
+            return;
+        }
+
+        try {
+            await navigator.clipboard.writeText(passwordRevealField.value);
+            copyPasswordRevealButton.textContent = 'Copiada';
+        } catch (error) {
+            passwordRevealField.focus();
+            passwordRevealField.select();
+            copyPasswordRevealButton.textContent = 'Seleccionada';
+        }
+    });
+
+    passwordRevealModalElement.addEventListener('hidden.bs.modal', () => {
+        passwordRevealField.value = '';
+        passwordRevealModalMessage.textContent = '';
+        passwordRevealModalHint.textContent = 'Guárdala ahora porque no volverá a mostrarse.';
+        copyPasswordRevealButton.textContent = 'Copiar';
+    });
+
+    window.addEventListener('popstate', () => {
+        if (!historyGuardArmed) {
+            return;
+        }
+
+        history.pushState({ prycorreosGuard: true }, document.title, historyGuardUrl);
+    });
+
     passwordToggleButtons.forEach((button) => {
         button.addEventListener('click', () => {
             const target = document.getElementById(button.dataset.passwordTarget);
@@ -1794,6 +1911,7 @@
         showAdminStatus('Registrando usuario desde administración...', 'secondary');
 
         const formData = new FormData(adminCreateUserForm);
+        const createdPassword = String(formData.get('password') || '');
         formData.append('action', 'create');
 
         try {
@@ -1806,6 +1924,11 @@
             createUserPanel.classList.add('d-none');
             showAdminStatus(result.message, 'success');
             await loadAdminOverview();
+            showPasswordRevealModal({
+                title: 'Clave del nuevo usuario',
+                message: 'Entrega esta clave al usuario ahora. Después de cerrar esta ventana ya no volverá a mostrarse.',
+                password: createdPassword,
+            });
         } catch (error) {
             showAdminStatus(error.message, 'danger');
         }
@@ -2067,6 +2190,7 @@
 
     registeredUsersTableBody.addEventListener('click', async (event) => {
         const editButton = event.target.closest('[data-edit-user]');
+        const resetPasswordButton = event.target.closest('[data-reset-user-password]');
         const deleteButton = event.target.closest('[data-delete-user]');
         const assignmentsButton = event.target.closest('[data-view-user-assignments]');
 
@@ -2077,6 +2201,43 @@
 
         if (editButton) {
             populateUserEditForm(editButton.dataset.editUser);
+            return;
+        }
+
+        if (resetPasswordButton) {
+            const user = getUserById(resetPasswordButton.dataset.resetUserPassword);
+            const confirmed = await openConfirmModal({
+                title: 'Restablecer clave',
+                message: `Se generará una nueva clave para ${user ? `${user.nombre} ${user.apellido}` : 'el usuario seleccionado'}. La clave actual dejará de funcionar.`,
+                confirmText: 'Restablecer',
+                confirmClass: 'btn btn-warning',
+            });
+
+            if (!confirmed) {
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('action', 'reset_password');
+            formData.append('usuario_id', resetPasswordButton.dataset.resetUserPassword);
+            showAdminStatus('Generando nueva clave del usuario...', 'secondary');
+
+            try {
+                const result = await requestJson('./api/admin/users.php', {
+                    method: 'POST',
+                    body: formData,
+                });
+
+                showAdminStatus(result.message, 'success');
+                showPasswordRevealModal({
+                    title: 'Clave restablecida',
+                    message: `Comparte esta nueva clave con ${result.user_full_name || 'el usuario'} ahora. Después de cerrar esta ventana ya no volverá a mostrarse.`,
+                    password: result.temporary_password || '',
+                });
+            } catch (error) {
+                showAdminStatus(error.message, 'danger');
+            }
+
             return;
         }
 
@@ -2338,6 +2499,7 @@
         }
     });
 
+    armHistoryGuard();
     bootstrapSession();
 </script>
 </body>
