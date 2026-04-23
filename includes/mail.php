@@ -281,13 +281,7 @@ function messageTargetsAccountEmail($imap, int $messageNumber, string $accountEm
 
     $normalizedHeaders = preg_replace("/\r?\n[ \t]+/", ' ', $rawHeaders) ?? $rawHeaders;
     $quotedEmail = preg_quote($accountEmail, '/');
-    $addressHeaderPattern = implode('|', [
-        'from',
-        'sender',
-        'reply-to',
-        'return-path',
-        'resent-from',
-        'x-sender',
+    $recipientHeaderPattern = implode('|', [
         'to',
         'cc',
         'bcc',
@@ -297,7 +291,7 @@ function messageTargetsAccountEmail($imap, int $messageNumber, string $accountEm
         'resent-to',
     ]);
 
-    return preg_match('/^(?:' . $addressHeaderPattern . '):.*' . $quotedEmail . '/im', $normalizedHeaders) === 1;
+    return preg_match('/^(?:' . $recipientHeaderPattern . '):.*' . $quotedEmail . '/im', $normalizedHeaders) === 1;
 }
 
 function parseImapOverviewDate(string $date): ?DateTimeImmutable
