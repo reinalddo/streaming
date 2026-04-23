@@ -658,6 +658,22 @@ header('Expires: 0');
                                     </form>
                                 </div>
 
+                                <div class="table-toolbar mb-3">
+                                    <div class="d-flex gap-2 flex-wrap align-items-center">
+                                        <input class="form-control" type="search" id="registeredUsersSearchInput" placeholder="Buscar por nombre, usuario, correo, teléfono o estado">
+                                    </div>
+                                    <div class="d-flex gap-2 align-items-center flex-wrap">
+                                        <label class="small text-secondary" for="registeredUsersPageSize">Filas por página</label>
+                                        <select class="form-select" id="registeredUsersPageSize">
+                                            <option value="10">10</option>
+                                            <option value="20">20</option>
+                                            <option value="50">50</option>
+                                            <option value="100">100</option>
+                                            <option value="200">200</option>
+                                        </select>
+                                    </div>
+                                </div>
+
                                 <div class="data-table-wrapper mb-4">
                                     <div class="table-responsive">
                                         <table class="table table-hover align-middle mb-0">
@@ -675,6 +691,10 @@ header('Expires: 0');
                                             <tbody id="registeredUsersTableBody"></tbody>
                                         </table>
                                     </div>
+                                </div>
+                                <div class="pagination-strip mb-4">
+                                    <div id="registeredUsersSummary" class="small text-secondary">No hay resultados para los filtros actuales.</div>
+                                    <div id="registeredUsersPagination" class="table-action-group"></div>
                                 </div>
 
                                 <div id="userEditPanel" class="inline-card d-none">
@@ -764,6 +784,21 @@ header('Expires: 0');
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
             </div>
             <div class="modal-body">
+                <div class="table-toolbar mb-3">
+                    <div class="d-flex gap-2 flex-wrap align-items-center">
+                        <input class="form-control" type="search" id="assignedUsersSearchInput" placeholder="Buscar por nombre, usuario o correo">
+                    </div>
+                    <div class="d-flex gap-2 align-items-center flex-wrap">
+                        <label class="small text-secondary" for="assignedUsersPageSize">Filas por página</label>
+                        <select class="form-select" id="assignedUsersPageSize">
+                            <option value="10">10</option>
+                            <option value="20">20</option>
+                            <option value="50">50</option>
+                            <option value="100">100</option>
+                            <option value="200">200</option>
+                        </select>
+                    </div>
+                </div>
                 <div class="data-table-wrapper">
                     <div class="table-responsive">
                         <table class="table table-hover align-middle mb-0">
@@ -778,6 +813,10 @@ header('Expires: 0');
                             <tbody id="assignedUsersTableBody"></tbody>
                         </table>
                     </div>
+                </div>
+                <div class="pagination-strip mt-3">
+                    <div id="assignedUsersSummary" class="small text-secondary">No hay resultados para los filtros actuales.</div>
+                    <div id="assignedUsersPagination" class="table-action-group"></div>
                 </div>
             </div>
         </div>
@@ -795,6 +834,21 @@ header('Expires: 0');
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
             </div>
             <div class="modal-body">
+                <div class="table-toolbar mb-3">
+                    <div class="d-flex gap-2 flex-wrap align-items-center">
+                        <input class="form-control" type="search" id="userAssignmentsSearchInput" placeholder="Buscar por servicio, cuenta, descripción o clave">
+                    </div>
+                    <div class="d-flex gap-2 align-items-center flex-wrap">
+                        <label class="small text-secondary" for="userAssignmentsPageSize">Filas por página</label>
+                        <select class="form-select" id="userAssignmentsPageSize">
+                            <option value="10">10</option>
+                            <option value="20">20</option>
+                            <option value="50">50</option>
+                            <option value="100">100</option>
+                            <option value="200">200</option>
+                        </select>
+                    </div>
+                </div>
                 <div class="data-table-wrapper">
                     <div class="table-responsive">
                         <table class="table table-hover align-middle mb-0">
@@ -810,6 +864,10 @@ header('Expires: 0');
                             <tbody id="userAssignmentsTableBody"></tbody>
                         </table>
                     </div>
+                </div>
+                <div class="pagination-strip mt-3">
+                    <div id="userAssignmentsSummary" class="small text-secondary">No hay resultados para los filtros actuales.</div>
+                    <div id="userAssignmentsPagination" class="table-action-group"></div>
                 </div>
             </div>
         </div>
@@ -833,9 +891,19 @@ header('Expires: 0');
                             <label class="form-label" for="serviceAssignAccountSelect">Cuenta del servicio</label>
                             <select class="form-select" id="serviceAssignAccountSelect"></select>
                         </div>
-                        <div class="col-12 col-lg-6">
+                        <div class="col-12 col-lg-4">
                             <label class="form-label" for="serviceAssignUserSearchInput">Buscar usuario</label>
-                            <input class="form-control" type="search" id="serviceAssignUserSearchInput" placeholder="Nombre, usuario o correo">
+                            <input class="form-control" type="search" id="serviceAssignUserSearchInput" placeholder="Nombre, usuario, correo o asignación">
+                        </div>
+                        <div class="col-12 col-lg-2">
+                            <label class="form-label" for="serviceAssignUsersPageSize">Filas por página</label>
+                            <select class="form-select" id="serviceAssignUsersPageSize">
+                                <option value="10">10</option>
+                                <option value="20">20</option>
+                                <option value="50">50</option>
+                                <option value="100">100</option>
+                                <option value="200">200</option>
+                            </select>
                         </div>
                     </div>
                 </div>
@@ -855,6 +923,10 @@ header('Expires: 0');
                             <tbody id="serviceAssignUsersTableBody"></tbody>
                         </table>
                     </div>
+                </div>
+                <div class="pagination-strip mt-3">
+                    <div id="serviceAssignUsersSummary" class="small text-secondary">No hay resultados para los filtros actuales.</div>
+                    <div id="serviceAssignUsersPagination" class="table-action-group"></div>
                 </div>
             </div>
         </div>
@@ -959,6 +1031,10 @@ header('Expires: 0');
     const serviceAccountEmail = document.getElementById('serviceAccountEmail');
 
     const registeredUsersTableBody = document.getElementById('registeredUsersTableBody');
+    const registeredUsersSearchInput = document.getElementById('registeredUsersSearchInput');
+    const registeredUsersPageSize = document.getElementById('registeredUsersPageSize');
+    const registeredUsersSummary = document.getElementById('registeredUsersSummary');
+    const registeredUsersPagination = document.getElementById('registeredUsersPagination');
     const userCountBadge = document.getElementById('userCountBadge');
     const toggleCreateUserButton = document.getElementById('toggleCreateUserButton');
     const createUserPanel = document.getElementById('createUserPanel');
@@ -975,12 +1051,20 @@ header('Expires: 0');
     const assignedUsersModalTitle = document.getElementById('assignedUsersModalTitle');
     const assignedUsersModalSubtitle = document.getElementById('assignedUsersModalSubtitle');
     const assignedUsersTableBody = document.getElementById('assignedUsersTableBody');
+    const assignedUsersSearchInput = document.getElementById('assignedUsersSearchInput');
+    const assignedUsersPageSize = document.getElementById('assignedUsersPageSize');
+    const assignedUsersSummary = document.getElementById('assignedUsersSummary');
+    const assignedUsersPagination = document.getElementById('assignedUsersPagination');
     const assignedUsersModal = new bootstrap.Modal(assignedUsersModalElement);
 
     const userAssignmentsModalElement = document.getElementById('userAssignmentsModal');
     const userAssignmentsModalTitle = document.getElementById('userAssignmentsModalTitle');
     const userAssignmentsModalSubtitle = document.getElementById('userAssignmentsModalSubtitle');
     const userAssignmentsTableBody = document.getElementById('userAssignmentsTableBody');
+    const userAssignmentsSearchInput = document.getElementById('userAssignmentsSearchInput');
+    const userAssignmentsPageSize = document.getElementById('userAssignmentsPageSize');
+    const userAssignmentsSummary = document.getElementById('userAssignmentsSummary');
+    const userAssignmentsPagination = document.getElementById('userAssignmentsPagination');
     const userAssignmentsModal = new bootstrap.Modal(userAssignmentsModalElement);
 
     const serviceAssignUsersModalElement = document.getElementById('serviceAssignUsersModal');
@@ -988,7 +1072,10 @@ header('Expires: 0');
     const serviceAssignUsersModalSubtitle = document.getElementById('serviceAssignUsersModalSubtitle');
     const serviceAssignAccountSelect = document.getElementById('serviceAssignAccountSelect');
     const serviceAssignUserSearchInput = document.getElementById('serviceAssignUserSearchInput');
+    const serviceAssignUsersPageSize = document.getElementById('serviceAssignUsersPageSize');
     const serviceAssignUsersTableBody = document.getElementById('serviceAssignUsersTableBody');
+    const serviceAssignUsersSummary = document.getElementById('serviceAssignUsersSummary');
+    const serviceAssignUsersPagination = document.getElementById('serviceAssignUsersPagination');
     const serviceAssignUsersModal = new bootstrap.Modal(serviceAssignUsersModalElement);
 
     const confirmActionModalElement = document.getElementById('confirmActionModal');
@@ -1016,8 +1103,10 @@ header('Expires: 0');
         user: null,
         selectedServiceId: null,
         selectedAssignServiceId: null,
+        selectedAssignedUsersAccountId: null,
         expandedAssignmentServiceId: null,
         assignmentTableState: {},
+        listTableState: {},
         confirmResolver: null,
         selectedUserAssignmentsUserId: null,
         overview: {
@@ -1154,6 +1243,49 @@ header('Expires: 0');
         return appState.assignmentTableState[normalizedServiceId];
     }
 
+    function getListTableState(key) {
+        if (!appState.listTableState[key]) {
+            appState.listTableState[key] = {
+                query: '',
+                page: 1,
+                pageSize: 10,
+            };
+        }
+
+        return appState.listTableState[key];
+    }
+
+    function getPaginatedRows(rows, state) {
+        const totalRows = rows.length;
+        const totalPages = Math.max(1, Math.ceil(totalRows / state.pageSize));
+
+        if (state.page > totalPages) {
+            state.page = totalPages;
+        }
+
+        const startIndex = totalRows === 0 ? 0 : (state.page - 1) * state.pageSize;
+        const paginatedRows = rows.slice(startIndex, startIndex + state.pageSize);
+        const summary = totalRows === 0
+            ? 'No hay resultados para los filtros actuales.'
+            : `Mostrando ${startIndex + 1}-${Math.min(startIndex + state.pageSize, totalRows)} de ${totalRows} registro(s)`;
+
+        return {
+            totalRows,
+            totalPages,
+            startIndex,
+            paginatedRows,
+            summary,
+        };
+    }
+
+    function renderPaginationControls(target, page, totalPages) {
+        target.innerHTML = `
+            <button class="btn btn-sm btn-outline-secondary" type="button" data-page-nav="prev" ${page <= 1 ? 'disabled' : ''}>Anterior</button>
+            <span class="metric-pill">Página ${page} de ${totalPages}</span>
+            <button class="btn btn-sm btn-outline-secondary" type="button" data-page-nav="next" ${page >= totalPages ? 'disabled' : ''}>Siguiente</button>
+        `;
+    }
+
     function enterAdminMode(user) {
         appState.user = user;
         authView.classList.add('d-none');
@@ -1165,8 +1297,10 @@ header('Expires: 0');
         appState.user = null;
         appState.selectedServiceId = null;
         appState.selectedAssignServiceId = null;
+        appState.selectedAssignedUsersAccountId = null;
         appState.expandedAssignmentServiceId = null;
         appState.assignmentTableState = {};
+        appState.listTableState = {};
         userEditPanel.classList.add('d-none');
         createUserPanel.classList.add('d-none');
         adminView.classList.add('d-none');
@@ -1437,14 +1571,28 @@ header('Expires: 0');
             return;
         }
 
+        appState.selectedAssignedUsersAccountId = Number(accountId);
         const assignedUsers = normalizeArray(account.assigned_users);
+        const state = getListTableState('assignedUsers');
+    state.query = '';
+    state.page = 1;
+        const normalizedQuery = state.query.trim().toLowerCase();
+        const filteredUsers = assignedUsers.filter((user) => [user.nombre, user.apellido, user.username, user.email].join(' ').toLowerCase().includes(normalizedQuery));
+        const { paginatedRows, summary, totalPages } = getPaginatedRows(filteredUsers, state);
         assignedUsersModalTitle.textContent = `Usuarios asignados a ${account.correo_acceso}`;
         assignedUsersModalSubtitle.textContent = `${account.servicio_nombre} · ${assignedUsers.length} usuario(s) asignado(s)`;
+        assignedUsersSearchInput.value = state.query;
+        assignedUsersPageSize.value = String(state.pageSize);
+        assignedUsersSummary.textContent = summary;
+        renderPaginationControls(assignedUsersPagination, state.page, totalPages);
 
-        if (assignedUsers.length === 0) {
-            assignedUsersTableBody.innerHTML = '<tr><td colspan="4"><div class="empty-state">Esta cuenta no tiene usuarios asignados.</div></td></tr>';
+        if (filteredUsers.length === 0) {
+            const emptyMessage = assignedUsers.length === 0
+                ? 'Esta cuenta no tiene usuarios asignados.'
+                : 'No hay usuarios que coincidan con los filtros actuales.';
+            assignedUsersTableBody.innerHTML = `<tr><td colspan="4"><div class="empty-state">${emptyMessage}</div></td></tr>`;
         } else {
-            assignedUsersTableBody.innerHTML = assignedUsers.map((user) => `
+            assignedUsersTableBody.innerHTML = paginatedRows.map((user) => `
                 <tr>
                     <td>${escapeHtml(user.nombre)} ${escapeHtml(user.apellido)}</td>
                     <td>@${escapeHtml(user.username)}</td>
@@ -1468,13 +1616,26 @@ header('Expires: 0');
 
         appState.selectedUserAssignmentsUserId = Number(userId);
         const assignments = normalizeArray(user.assignments);
+        const state = getListTableState('userAssignments');
+        state.query = '';
+        state.page = 1;
+        const normalizedQuery = state.query.trim().toLowerCase();
+        const filteredAssignments = assignments.filter((assignment) => [assignment.service_name, assignment.account_email, assignment.description || '', assignment.account_password].join(' ').toLowerCase().includes(normalizedQuery));
+        const { paginatedRows, summary, totalPages } = getPaginatedRows(filteredAssignments, state);
         userAssignmentsModalTitle.textContent = `Cuentas asignadas a ${user.nombre} ${user.apellido}`;
         userAssignmentsModalSubtitle.textContent = `${assignments.length} cuenta(s) asignada(s) en total`;
+        userAssignmentsSearchInput.value = state.query;
+        userAssignmentsPageSize.value = String(state.pageSize);
+        userAssignmentsSummary.textContent = summary;
+        renderPaginationControls(userAssignmentsPagination, state.page, totalPages);
 
-        if (assignments.length === 0) {
-            userAssignmentsTableBody.innerHTML = '<tr><td colspan="5"><div class="empty-state">Este usuario aún no tiene cuentas asignadas.</div></td></tr>';
+        if (filteredAssignments.length === 0) {
+            const emptyMessage = assignments.length === 0
+                ? 'Este usuario aún no tiene cuentas asignadas.'
+                : 'No hay cuentas que coincidan con los filtros actuales.';
+            userAssignmentsTableBody.innerHTML = `<tr><td colspan="5"><div class="empty-state">${emptyMessage}</div></td></tr>`;
         } else {
-            userAssignmentsTableBody.innerHTML = assignments.map((assignment) => `
+            userAssignmentsTableBody.innerHTML = paginatedRows.map((assignment) => `
                 <tr>
                     <td>${escapeHtml(assignment.service_name)}</td>
                     <td>${escapeHtml(assignment.account_email)}</td>
@@ -1492,14 +1653,31 @@ header('Expires: 0');
 
     function renderRegisteredUsersTable() {
         const users = getUsers();
-        userCountBadge.textContent = `${users.length} usuario(s)`;
+        const state = getListTableState('registeredUsers');
+        const normalizedQuery = state.query.trim().toLowerCase();
+        const filteredUsers = users.filter((user) => {
+            const assignmentCount = normalizeArray(user.assignments).length;
+            const assignmentsLabel = assignmentCount === 1 ? '1 cuenta asignada' : `${assignmentCount} cuentas asignadas`;
+            const statusLabel = Number(user.activo) === 1 ? 'activo' : 'inactivo';
 
-        if (users.length === 0) {
-            registeredUsersTableBody.innerHTML = '<tr><td colspan="7"><div class="empty-state">No hay usuarios con rol usuario registrados.</div></td></tr>';
+            return [user.nombre, user.apellido, user.username, user.email, user.telefono || '', assignmentsLabel, statusLabel].join(' ').toLowerCase().includes(normalizedQuery);
+        });
+        const { paginatedRows, summary, totalPages } = getPaginatedRows(filteredUsers, state);
+        userCountBadge.textContent = `${users.length} usuario(s)`;
+        registeredUsersSearchInput.value = state.query;
+        registeredUsersPageSize.value = String(state.pageSize);
+        registeredUsersSummary.textContent = summary;
+        renderPaginationControls(registeredUsersPagination, state.page, totalPages);
+
+        if (filteredUsers.length === 0) {
+            const emptyMessage = users.length === 0
+                ? 'No hay usuarios con rol usuario registrados.'
+                : 'No hay usuarios que coincidan con los filtros actuales.';
+            registeredUsersTableBody.innerHTML = `<tr><td colspan="7"><div class="empty-state">${emptyMessage}</div></td></tr>`;
             return;
         }
 
-        registeredUsersTableBody.innerHTML = users.map((user) => {
+        registeredUsersTableBody.innerHTML = paginatedRows.map((user) => {
             const assignmentCount = normalizeArray(user.assignments).length;
             const assignmentsLabel = assignmentCount === 1 ? '1 cuenta asignada' : `${assignmentCount} cuentas asignadas`;
             const canDeleteUser = assignmentCount === 0;
@@ -1677,24 +1855,40 @@ header('Expires: 0');
 
         const serviceAccounts = normalizeArray(service.accounts);
         const selectedAccountId = Number(serviceAssignAccountSelect.value || 0);
-        const searchQuery = serviceAssignUserSearchInput.value.trim().toLowerCase();
+        const state = getListTableState('serviceAssignUsers');
+        const searchQuery = state.query.trim().toLowerCase();
 
         if (serviceAccounts.length === 0) {
             serviceAssignUsersTableBody.innerHTML = '<tr><td colspan="5"><div class="empty-state">Primero crea al menos una cuenta para este servicio y luego podras asignar usuarios.</div></td></tr>';
+            serviceAssignUsersSummary.textContent = 'No hay resultados para los filtros actuales.';
+            renderPaginationControls(serviceAssignUsersPagination, 1, 1);
             return;
         }
 
         const users = getUsers().filter((user) => {
-            const haystack = [user.nombre, user.apellido, user.username, user.email].join(' ').toLowerCase();
+            const serviceAssignments = normalizeArray(user.assignments).filter((assignment) => assignment.service_name === service.nombre);
+            const haystack = [
+                user.nombre,
+                user.apellido,
+                user.username,
+                user.email,
+                ...serviceAssignments.map((assignment) => `${assignment.account_email} ${assignment.description || ''}`),
+            ].join(' ').toLowerCase();
+
             return haystack.includes(searchQuery);
         });
+        const { paginatedRows, summary, totalPages } = getPaginatedRows(users, state);
+        serviceAssignUserSearchInput.value = state.query;
+        serviceAssignUsersPageSize.value = String(state.pageSize);
+        serviceAssignUsersSummary.textContent = summary;
+        renderPaginationControls(serviceAssignUsersPagination, state.page, totalPages);
 
         if (users.length === 0) {
             serviceAssignUsersTableBody.innerHTML = '<tr><td colspan="5"><div class="empty-state">No hay usuarios que coincidan con la busqueda.</div></td></tr>';
             return;
         }
 
-        serviceAssignUsersTableBody.innerHTML = users.map((user) => {
+        serviceAssignUsersTableBody.innerHTML = paginatedRows.map((user) => {
             const serviceAssignments = normalizeArray(user.assignments).filter((assignment) => assignment.service_name === service.nombre);
             const selectedAccountAssignment = serviceAssignments.find((assignment) => Number(assignment.account_id) === selectedAccountId) || null;
             const alreadyAssignedToSelectedAccount = selectedAccountAssignment !== null;
@@ -1731,6 +1925,9 @@ header('Expires: 0');
         }
 
         appState.selectedAssignServiceId = Number(serviceId);
+        const state = getListTableState('serviceAssignUsers');
+        state.query = '';
+        state.page = 1;
         const serviceAccounts = normalizeArray(service.accounts);
         const initialAccountId = serviceAccounts.some((account) => String(account.id) === String(preferredAccountId))
             ? String(preferredAccountId)
@@ -1745,7 +1942,6 @@ header('Expires: 0');
             : '<option value="">No hay cuentas registradas</option>';
         serviceAssignAccountSelect.disabled = serviceAccounts.length === 0;
         serviceAssignAccountSelect.value = initialAccountId;
-        serviceAssignUserSearchInput.value = '';
         renderServiceAssignUsersTable();
         serviceAssignUsersModal.show();
     }
@@ -1969,6 +2165,146 @@ header('Expires: 0');
     cancelCreateUserButton.addEventListener('click', () => {
         resetCreateUserForm();
         createUserPanel.classList.add('d-none');
+    });
+
+    registeredUsersSearchInput.addEventListener('input', () => {
+        const state = getListTableState('registeredUsers');
+        state.query = registeredUsersSearchInput.value;
+        state.page = 1;
+        renderRegisteredUsersTable();
+    });
+
+    registeredUsersPageSize.addEventListener('change', () => {
+        const state = getListTableState('registeredUsers');
+        state.pageSize = Number(registeredUsersPageSize.value) || 10;
+        state.page = 1;
+        renderRegisteredUsersTable();
+    });
+
+    registeredUsersPagination.addEventListener('click', (event) => {
+        const button = event.target.closest('[data-page-nav]');
+
+        if (!button) {
+            return;
+        }
+
+        const state = getListTableState('registeredUsers');
+        state.page += button.dataset.pageNav === 'next' ? 1 : -1;
+        if (state.page < 1) {
+            state.page = 1;
+        }
+        renderRegisteredUsersTable();
+    });
+
+    assignedUsersSearchInput.addEventListener('input', () => {
+        const state = getListTableState('assignedUsers');
+        state.query = assignedUsersSearchInput.value;
+        state.page = 1;
+
+        if (appState.selectedAssignedUsersAccountId !== null) {
+            const account = getAccountById(appState.selectedAssignedUsersAccountId);
+            if (!account) {
+                return;
+            }
+
+            const assignedUsers = normalizeArray(account.assigned_users);
+            const normalizedQuery = state.query.trim().toLowerCase();
+            const filteredUsers = assignedUsers.filter((user) => [user.nombre, user.apellido, user.username, user.email].join(' ').toLowerCase().includes(normalizedQuery));
+            const { paginatedRows, summary, totalPages } = getPaginatedRows(filteredUsers, state);
+
+            assignedUsersSummary.textContent = summary;
+            renderPaginationControls(assignedUsersPagination, state.page, totalPages);
+            assignedUsersTableBody.innerHTML = filteredUsers.length === 0
+                ? `<tr><td colspan="4"><div class="empty-state">${assignedUsers.length === 0 ? 'Esta cuenta no tiene usuarios asignados.' : 'No hay usuarios que coincidan con los filtros actuales.'}</div></td></tr>`
+                : paginatedRows.map((user) => `
+                    <tr>
+                        <td>${escapeHtml(user.nombre)} ${escapeHtml(user.apellido)}</td>
+                        <td>@${escapeHtml(user.username)}</td>
+                        <td>${escapeHtml(user.email)}</td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-danger" type="button" data-unassign-account-user="${user.assignment_id}" data-account-id="${account.id}">Desasignar</button>
+                        </td>
+                    </tr>
+                `).join('');
+        }
+    });
+
+    assignedUsersPageSize.addEventListener('change', () => {
+        const state = getListTableState('assignedUsers');
+        state.pageSize = Number(assignedUsersPageSize.value) || 10;
+        state.page = 1;
+        assignedUsersSearchInput.dispatchEvent(new Event('input'));
+    });
+
+    assignedUsersPagination.addEventListener('click', (event) => {
+        const button = event.target.closest('[data-page-nav]');
+
+        if (!button) {
+            return;
+        }
+
+        const state = getListTableState('assignedUsers');
+        state.page += button.dataset.pageNav === 'next' ? 1 : -1;
+        if (state.page < 1) {
+            state.page = 1;
+        }
+        assignedUsersSearchInput.dispatchEvent(new Event('input'));
+    });
+
+    userAssignmentsSearchInput.addEventListener('input', () => {
+        const state = getListTableState('userAssignments');
+        state.query = userAssignmentsSearchInput.value;
+        state.page = 1;
+
+        if (appState.selectedUserAssignmentsUserId !== null) {
+            const user = getUserById(appState.selectedUserAssignmentsUserId);
+            if (!user) {
+                return;
+            }
+
+            const assignments = normalizeArray(user.assignments);
+            const normalizedQuery = state.query.trim().toLowerCase();
+            const filteredAssignments = assignments.filter((assignment) => [assignment.service_name, assignment.account_email, assignment.description || '', assignment.account_password].join(' ').toLowerCase().includes(normalizedQuery));
+            const { paginatedRows, summary, totalPages } = getPaginatedRows(filteredAssignments, state);
+
+            userAssignmentsSummary.textContent = summary;
+            renderPaginationControls(userAssignmentsPagination, state.page, totalPages);
+            userAssignmentsTableBody.innerHTML = filteredAssignments.length === 0
+                ? `<tr><td colspan="5"><div class="empty-state">${assignments.length === 0 ? 'Este usuario aún no tiene cuentas asignadas.' : 'No hay cuentas que coincidan con los filtros actuales.'}</div></td></tr>`
+                : paginatedRows.map((assignment) => `
+                    <tr>
+                        <td>${escapeHtml(assignment.service_name)}</td>
+                        <td>${escapeHtml(assignment.account_email)}</td>
+                        <td>${escapeHtml(assignment.description || 'Sin descripción')}</td>
+                        <td>${escapeHtml(assignment.account_password)}</td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-danger" type="button" data-unassign-user-assignment="${assignment.assignment_id}">Desafiliar</button>
+                        </td>
+                    </tr>
+                `).join('');
+        }
+    });
+
+    userAssignmentsPageSize.addEventListener('change', () => {
+        const state = getListTableState('userAssignments');
+        state.pageSize = Number(userAssignmentsPageSize.value) || 10;
+        state.page = 1;
+        userAssignmentsSearchInput.dispatchEvent(new Event('input'));
+    });
+
+    userAssignmentsPagination.addEventListener('click', (event) => {
+        const button = event.target.closest('[data-page-nav]');
+
+        if (!button) {
+            return;
+        }
+
+        const state = getListTableState('userAssignments');
+        state.page += button.dataset.pageNav === 'next' ? 1 : -1;
+        if (state.page < 1) {
+            state.page = 1;
+        }
+        userAssignmentsSearchInput.dispatchEvent(new Event('input'));
     });
 
     cancelUserEditButton.addEventListener('click', () => {
@@ -2364,10 +2700,37 @@ header('Expires: 0');
     });
 
     serviceAssignAccountSelect.addEventListener('change', () => {
+        const state = getListTableState('serviceAssignUsers');
+        state.page = 1;
         renderServiceAssignUsersTable();
     });
 
     serviceAssignUserSearchInput.addEventListener('input', () => {
+        const state = getListTableState('serviceAssignUsers');
+        state.query = serviceAssignUserSearchInput.value;
+        state.page = 1;
+        renderServiceAssignUsersTable();
+    });
+
+    serviceAssignUsersPageSize.addEventListener('change', () => {
+        const state = getListTableState('serviceAssignUsers');
+        state.pageSize = Number(serviceAssignUsersPageSize.value) || 10;
+        state.page = 1;
+        renderServiceAssignUsersTable();
+    });
+
+    serviceAssignUsersPagination.addEventListener('click', (event) => {
+        const button = event.target.closest('[data-page-nav]');
+
+        if (!button) {
+            return;
+        }
+
+        const state = getListTableState('serviceAssignUsers');
+        state.page += button.dataset.pageNav === 'next' ? 1 : -1;
+        if (state.page < 1) {
+            state.page = 1;
+        }
         renderServiceAssignUsersTable();
     });
 
