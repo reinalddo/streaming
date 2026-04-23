@@ -338,6 +338,62 @@ header('Expires: 0');
             font-size: 1rem;
         }
 
+        .loading-modal .modal-content {
+            border: 0;
+            border-radius: 1.5rem;
+            box-shadow: 0 28px 60px rgba(24, 33, 47, 0.18);
+        }
+
+        .loading-indicator {
+            width: 72px;
+            height: 72px;
+            border-radius: 50%;
+            border: 6px solid rgba(11, 87, 208, 0.14);
+            border-top-color: var(--pc-primary);
+            animation: user-search-spin 0.85s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes user-search-spin {
+            from {
+                transform: rotate(0deg);
+            }
+
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .mailbox-accordion .accordion-item {
+            border: 1px solid var(--pc-border);
+            border-radius: 1rem;
+            overflow: hidden;
+            margin-bottom: 0.85rem;
+            background: #fff;
+        }
+
+        .mailbox-accordion .accordion-button {
+            background: #fff;
+            box-shadow: none;
+            gap: 0.9rem;
+        }
+
+        .mailbox-accordion .accordion-button:not(.collapsed) {
+            background: #f8fbff;
+            color: var(--pc-text);
+        }
+
+        .mailbox-preview {
+            color: var(--pc-muted);
+            font-size: 0.9rem;
+        }
+
+        .mailbox-body {
+            border-top: 1px solid var(--pc-border);
+            padding-top: 1rem;
+            overflow-x: auto;
+        }
+
         .empty-state {
             border: 1px dashed #cbd5e1;
             border-radius: 1rem;
@@ -593,11 +649,11 @@ header('Expires: 0');
                                     </div>
                                     <div id="userSearchHelp" class="form-text">Solo puedes buscar correos de cuentas que ya estén asignadas a tu usuario.</div>
                                 </div>
-                                <div class="col-12 col-lg-3 d-grid">
-                                    <button id="userSearchButton" class="btn btn-primary btn-lg btn-user-search" type="submit">
+                                <div class="col-12 col-lg-3 d-grid d-lg-flex justify-content-lg-end">
+                                    <button id="userSearchButton" class="btn btn-primary btn-user-search px-4" type="submit">
                                         <span class="d-inline-flex align-items-center justify-content-center gap-2">
                                             <i class="bi bi-search"></i>
-                                            Buscar información
+                                            Consultar
                                         </span>
                                     </button>
                                 </div>
@@ -605,7 +661,7 @@ header('Expires: 0');
                         </div>
 
                         <div id="userSearchResults" class="dashboard-block">
-                            <div class="empty-state">Ingresa un correo y presiona Buscar información para ver los resultados.</div>
+                            <div class="empty-state">Ingresa un correo y presiona Consultar para ver los resultados.</div>
                         </div>
                     </div>
                 </div>
@@ -640,6 +696,9 @@ header('Expires: 0');
                         </li>
                         <li class="nav-item" role="presentation">
                             <button class="nav-link" id="assignments-tab" data-bs-toggle="pill" data-bs-target="#assignments-pane" type="button" role="tab" aria-controls="assignments-pane" aria-selected="false">Asignar Cuentas</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="mail-config-tab" data-bs-toggle="pill" data-bs-target="#mail-config-pane" type="button" role="tab" aria-controls="mail-config-pane" aria-selected="false">Configuración Correo</button>
                         </li>
                     </ul>
 
@@ -938,6 +997,53 @@ header('Expires: 0');
                                 </div>
                             </div>
                         </div>
+
+                        <div class="tab-pane fade" id="mail-config-pane" role="tabpanel" aria-labelledby="mail-config-tab" tabindex="0">
+                            <div class="dashboard-block">
+                                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+                                    <div>
+                                        <h2 class="section-title mb-0">Configuración Correo</h2>
+                                        <p class="section-subtitle mb-0">Configura el buzón IMAP que se usará para consultar los correos recientes de las cuentas asignadas.</p>
+                                    </div>
+                                    <span id="mailConfigDelayBadge" class="badge text-bg-secondary rounded-pill">20 min</span>
+                                </div>
+
+                                <form id="mailConfigForm" class="row g-3" novalidate>
+                                    <div class="col-12">
+                                        <label class="form-label" for="mailConfigMailbox">Buzón IMAP</label>
+                                        <input class="form-control" type="text" id="mailConfigMailbox" name="imap_mailbox" placeholder="{imap.hostinger.com:993/imap/ssl}INBOX" required>
+                                    </div>
+                                    <div class="col-12 col-lg-6">
+                                        <label class="form-label" for="mailConfigUser">Correo de acceso IMAP</label>
+                                        <input class="form-control" type="email" id="mailConfigUser" name="imap_user" placeholder="contacto@dominio.com" required>
+                                    </div>
+                                    <div class="col-12 col-lg-6">
+                                        <label class="form-label" for="mailConfigPassword">Clave del correo IMAP</label>
+                                        <div class="password-field">
+                                            <input class="form-control" type="password" id="mailConfigPassword" name="imap_password" placeholder="Deja en blanco para conservar la actual">
+                                            <button class="password-toggle" type="button" data-password-target="mailConfigPassword" aria-label="Mostrar clave">
+                                                <i class="bi bi-eye"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="col-12 col-md-6 col-lg-3">
+                                        <label class="form-label" for="mailConfigDelayDays">Delay en días</label>
+                                        <input class="form-control" type="number" id="mailConfigDelayDays" name="delay_days" min="0" step="1" value="0" required>
+                                    </div>
+                                    <div class="col-12 col-md-6 col-lg-3">
+                                        <label class="form-label" for="mailConfigDelayMinutes">Delay en minutos</label>
+                                        <input class="form-control" type="number" id="mailConfigDelayMinutes" name="delay_minutes" min="1" step="1" value="20" required>
+                                    </div>
+                                    <div class="col-12 col-md-6 col-lg-6">
+                                        <label class="form-label" for="mailConfigMaxMessages">Máximo correos</label>
+                                        <input class="form-control" type="number" id="mailConfigMaxMessages" name="max_messages" min="1" max="100" step="1" value="20" required>
+                                    </div>
+                                    <div class="col-12 d-grid d-lg-flex justify-content-lg-end">
+                                        <button id="mailConfigSubmitButton" class="btn btn-primary" type="submit">Guardar configuración</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </section>
@@ -1140,6 +1246,21 @@ header('Expires: 0');
     </div>
 </div>
 
+<div class="modal fade loading-modal" id="userSearchLoadingModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content">
+            <div class="modal-header border-0 pb-0">
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body text-center py-5 px-4">
+                <div class="loading-indicator mb-4" aria-hidden="true"></div>
+                <h2 class="h5 mb-2">Buscando Información...</h2>
+                <p class="text-secondary mb-0">Espera un momento mientras consultamos los correos recientes.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="modal fade" id="passwordRevealModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
@@ -1271,6 +1392,15 @@ header('Expires: 0');
 
     const serviceAssignmentsTableBody = document.getElementById('serviceAssignmentsTableBody');
     const assignmentServiceCountBadge = document.getElementById('assignmentServiceCountBadge');
+    const mailConfigForm = document.getElementById('mailConfigForm');
+    const mailConfigMailbox = document.getElementById('mailConfigMailbox');
+    const mailConfigUser = document.getElementById('mailConfigUser');
+    const mailConfigPassword = document.getElementById('mailConfigPassword');
+    const mailConfigDelayDays = document.getElementById('mailConfigDelayDays');
+    const mailConfigDelayMinutes = document.getElementById('mailConfigDelayMinutes');
+    const mailConfigMaxMessages = document.getElementById('mailConfigMaxMessages');
+    const mailConfigDelayBadge = document.getElementById('mailConfigDelayBadge');
+    const mailConfigSubmitButton = document.getElementById('mailConfigSubmitButton');
 
     const assignedUsersModalElement = document.getElementById('assignedUsersModal');
     const assignedUsersModalTitle = document.getElementById('assignedUsersModalTitle');
@@ -1314,6 +1444,9 @@ header('Expires: 0');
     const feedbackModalBody = document.getElementById('feedbackModalBody');
     const feedbackModal = new bootstrap.Modal(feedbackModalElement);
 
+    const userSearchLoadingModalElement = document.getElementById('userSearchLoadingModal');
+    const userSearchLoadingModal = new bootstrap.Modal(userSearchLoadingModalElement);
+
     const passwordRevealModalElement = document.getElementById('passwordRevealModal');
     const passwordRevealModalTitle = document.getElementById('passwordRevealModalTitle');
     const passwordRevealModalMessage = document.getElementById('passwordRevealModalMessage');
@@ -1352,7 +1485,9 @@ header('Expires: 0');
             services: [],
             accounts: [],
             users: [],
+            mail_configuration: null,
         },
+        userSearchPending: false,
     };
 
     const historyGuardUrl = `${window.location.pathname}${window.location.search}${window.location.hash}`;
@@ -1395,43 +1530,62 @@ header('Expires: 0');
     }
 
     async function requestJson(url, options = {}) {
-        const response = await fetch(url, {
-            credentials: 'same-origin',
-            ...options,
-        });
+        const { timeoutMs = 0, ...fetchOptions } = options;
+        const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+        const timeoutId = timeoutMs > 0 && controller
+            ? window.setTimeout(() => controller.abort(), timeoutMs)
+            : null;
 
-        const responseText = await response.text();
-        const contentType = (response.headers.get('content-type') || '').toLowerCase();
-        let data = null;
+        try {
+            const response = await fetch(url, {
+                credentials: 'same-origin',
+                ...fetchOptions,
+                signal: controller ? controller.signal : undefined,
+            });
 
-        if (responseText !== '') {
-            try {
-                data = JSON.parse(responseText);
-            } catch (error) {
-                console.error('Respuesta no JSON recibida', {
-                    url,
-                    status: response.status,
-                    contentType,
-                    bodyPreview: responseText.slice(0, 300),
-                });
+            const responseText = await response.text();
+            const contentType = (response.headers.get('content-type') || '').toLowerCase();
+            let data = null;
 
-                const fallbackMessage = responseText.trim().startsWith('<')
-                    ? 'El servidor devolvió una respuesta no válida. Recarga la página e inténtalo de nuevo.'
-                    : 'No fue posible interpretar la respuesta del servidor.';
+            if (responseText !== '') {
+                try {
+                    data = JSON.parse(responseText);
+                } catch (error) {
+                    console.error('Respuesta no JSON recibida', {
+                        url,
+                        status: response.status,
+                        contentType,
+                        bodyPreview: responseText.slice(0, 300),
+                    });
 
-                throw new Error(fallbackMessage);
+                    const fallbackMessage = responseText.trim().startsWith('<')
+                        ? 'El servidor devolvió una respuesta no válida. Recarga la página e inténtalo de nuevo.'
+                        : 'No fue posible interpretar la respuesta del servidor.';
+
+                    throw new Error(fallbackMessage);
+                }
+            }
+
+            if (!response.ok) {
+                throw new Error(data?.message || 'Ocurrió un error al procesar la solicitud.');
+            }
+
+            if (data === null) {
+                throw new Error('El servidor no devolvió datos válidos.');
+            }
+
+            return data;
+        } catch (error) {
+            if (error instanceof DOMException && error.name === 'AbortError') {
+                throw new Error('La consulta tardó demasiado. Reduce la ventana de búsqueda o verifica la conexión IMAP.');
+            }
+
+            throw error;
+        } finally {
+            if (timeoutId !== null) {
+                window.clearTimeout(timeoutId);
             }
         }
-
-        if (!response.ok) {
-            throw new Error(data?.message || 'Ocurrió un error al procesar la solicitud.');
-        }
-
-        if (data === null) {
-            throw new Error('El servidor no devolvió datos válidos.');
-        }
-
-        return data;
     }
 
     function getServices() {
@@ -1444,6 +1598,10 @@ header('Expires: 0');
 
     function getUsers() {
         return normalizeArray(appState.overview.users);
+    }
+
+    function getMailConfiguration() {
+        return appState.overview.mail_configuration || null;
     }
 
     function getServiceById(serviceId) {
@@ -1591,6 +1749,99 @@ header('Expires: 0');
         userSearchResults.innerHTML = `<div class="empty-state">${escapeHtml(message)}</div>`;
     }
 
+    function resetUserSearchUiState() {
+        appState.userSearchPending = false;
+        userSearchButton.disabled = getUserModuleAssignments().length === 0;
+        userSearchEmail.disabled = getUserModuleAssignments().length === 0;
+    }
+
+    function setUserSearchLoading(isLoading) {
+        appState.userSearchPending = isLoading;
+        userSearchButton.disabled = isLoading || getUserModuleAssignments().length === 0;
+        userSearchEmail.disabled = isLoading || getUserModuleAssignments().length === 0;
+
+        if (isLoading) {
+            userSearchLoadingModal.show();
+            return;
+        }
+
+        userSearchLoadingModal.hide();
+    }
+
+    async function submitUserSearch({ source = 'manual' } = {}) {
+        if (appState.userSearchPending) {
+            return;
+        }
+
+        const selectedEmail = userSearchEmail.value.trim().toLowerCase();
+
+        if (selectedEmail === '') {
+            if (source === 'manual') {
+                showUserStatus('Debes indicar un correo para buscar.', 'danger');
+            } else {
+                showUserStatus('', 'secondary');
+            }
+
+            renderUserModuleEmptyState('Escribe o selecciona una cuenta asignada para consultar su información.');
+            renderUserSearchOptions('', { forceOpen: source === 'manual' });
+            return;
+        }
+
+        if (!getUserModuleAssignments().some((assignment) => String(assignment.account_email).toLowerCase() === selectedEmail)) {
+            showUserStatus('Debes seleccionar una de las cuentas asignadas a tu usuario.', 'danger');
+            renderUserModuleEmptyState('Selecciona una cuenta válida desde el listado para consultar su información.');
+            renderUserSearchOptions(userSearchEmail.value, { forceOpen: true });
+            return;
+        }
+
+        hideUserSearchOptions();
+        showUserStatus('', 'secondary');
+        const formData = new FormData(userSearchForm);
+        setUserSearchLoading(true);
+
+        try {
+            const result = await requestJson('./api/user/search.php', {
+                method: 'POST',
+                body: formData,
+                timeoutMs: 30000,
+            });
+
+            renderUserSearchResult(result);
+            showUserStatus(result.message, result.found === false ? 'warning' : 'success');
+        } catch (error) {
+            userSearchResults.innerHTML = '<div class="empty-state">No fue posible cargar la información solicitada.</div>';
+            showUserStatus(error.message, 'danger');
+        } finally {
+            setUserSearchLoading(false);
+        }
+    }
+
+    function formatMailDelayLabel(delayDays, delayMinutes) {
+        const normalizedDays = Number(delayDays) >= 0 ? Number(delayDays) : 0;
+        const normalizedMinutes = Number(delayMinutes) > 0 ? Number(delayMinutes) : 20;
+
+        return `${normalizedDays} día(s) · ${normalizedMinutes} min`;
+    }
+
+    function renderMailConfiguration() {
+        const configuration = getMailConfiguration() || {};
+        const delayDays = Number(configuration.delay_days) >= 0 ? Number(configuration.delay_days) : 0;
+        const delayMinutes = Number(configuration.delay_minutes) > 0 ? Number(configuration.delay_minutes) : 20;
+        const maxMessages = Number(configuration.max_messages) > 0 ? Number(configuration.max_messages) : 20;
+
+        if (!mailConfigForm) {
+            return;
+        }
+
+        mailConfigMailbox.value = configuration.imap_mailbox || '{imap.hostinger.com:993/imap/ssl}INBOX';
+        mailConfigUser.value = configuration.imap_user || '';
+        mailConfigPassword.value = '';
+        mailConfigDelayDays.value = delayDays;
+        mailConfigDelayMinutes.value = delayMinutes;
+        mailConfigMaxMessages.value = maxMessages;
+        mailConfigDelayBadge.textContent = formatMailDelayLabel(delayDays, delayMinutes);
+    }
+
     async function loadUserModuleOverview() {
         const result = await requestJson('./api/user/overview.php');
         appState.userModule.profile = result.user || null;
@@ -1606,8 +1857,8 @@ header('Expires: 0');
         userSearchHelp.textContent = result.assignments.length > 0
             ? 'Solo puedes buscar correos de cuentas que ya estén asignadas a tu usuario.'
             : 'Aún no tienes cuentas asignadas. Cuando tengas una, aparecerá aquí para consultarla.';
-        userSearchEmail.disabled = result.assignments.length === 0;
-        userSearchButton.disabled = result.assignments.length === 0;
+        userSearchEmail.disabled = result.assignments.length === 0 || appState.userSearchPending;
+        userSearchButton.disabled = result.assignments.length === 0 || appState.userSearchPending;
         openUserProfileButton.disabled = false;
         hideUserSearchOptions();
         populateUserProfileForm();
@@ -1615,7 +1866,7 @@ header('Expires: 0');
         if (result.assignments.length === 0) {
             renderUserModuleEmptyState('Todavía no tienes cuentas asignadas para consultar.');
         } else {
-            renderUserModuleEmptyState('Escribe o selecciona una cuenta asignada y presiona Buscar información para ver los resultados.');
+            renderUserModuleEmptyState('Escribe o selecciona una cuenta asignada y presiona Consultar para ver los correos recientes.');
         }
     }
 
@@ -1662,30 +1913,72 @@ header('Expires: 0');
         }
 
         const assignments = normalizeArray(result.assignments);
+        const messages = normalizeArray(result.messages);
         const user = result.user || {};
-        const assignmentsMarkup = assignments.length === 0
-            ? '<div class="empty-state">Este usuario no tiene cuentas asignadas por ahora.</div>'
-            : `<div class="user-assignment-grid">${assignments.map((assignment) => `
-                <article class="user-assignment-card">
+        const delayDays = Number(result.delay_days) >= 0 ? Number(result.delay_days) : 0;
+        const delayMinutes = Number(result.delay_minutes) > 0 ? Number(result.delay_minutes) : 20;
+        const delayLabel = formatMailDelayLabel(delayDays, delayMinutes);
+        const selectedEmail = result.selected_account_email || userSearchEmail.value.trim();
+        const selectedAssignment = assignments[0] || getUserModuleAssignments().find((assignment) => String(assignment.account_email).toLowerCase() === String(selectedEmail).toLowerCase()) || null;
+        const selectedAssignmentMarkup = selectedAssignment
+            ? `
+                <article class="user-assignment-card mb-4">
                     <div class="d-flex align-items-center gap-3 mb-3">
-                        <div class="service-logo" style="background:${escapeHtml(assignment.color || '#0b57d0')};">${assignment.logo_url ? `<img src="${escapeHtml(assignment.logo_url)}" alt="${escapeHtml(assignment.service_name)}">` : escapeHtml(String((assignment.service_name || '').slice(0, 1).toUpperCase()))}</div>
+                        <div class="service-logo" style="background:${escapeHtml(selectedAssignment.color || '#0b57d0')};">${selectedAssignment.logo_url ? `<img src="${escapeHtml(selectedAssignment.logo_url)}" alt="${escapeHtml(selectedAssignment.service_name)}">` : escapeHtml(String((selectedAssignment.service_name || '').slice(0, 1).toUpperCase()))}</div>
                         <div>
-                            <div class="fw-semibold">${escapeHtml(assignment.service_name)}</div>
-                            <div class="small text-secondary">${escapeHtml(assignment.account_email)}</div>
+                            <div class="fw-semibold">${escapeHtml(selectedAssignment.service_name)}</div>
+                            <div class="small text-secondary">Cuenta: ${escapeHtml(selectedAssignment.account_email)}</div>
                         </div>
                     </div>
                     <div class="small text-secondary mb-1">Descripción</div>
-                    <div class="mb-3">${escapeHtml(assignment.description || 'Sin descripción')}</div>
+                    <div class="mb-3">${escapeHtml(selectedAssignment.description || 'Sin descripción')}</div>
                     <div class="small text-secondary mb-1">Clave asignada</div>
-                    <div class="fw-semibold">${escapeHtml(assignment.account_password)}</div>
+                    <div class="fw-semibold">${escapeHtml(selectedAssignment.account_password || 'No disponible')}</div>
                 </article>
-            `).join('')}</div>`;
+            `
+            : '';
+        const messagesMarkup = messages.length === 0
+            ? `<div class="empty-state">No se encontraron correos para ${escapeHtml(selectedEmail)} en la ventana configurada de ${escapeHtml(delayLabel)}.</div>`
+            : `
+                <div class="accordion mailbox-accordion" id="mailboxAccordion">
+                    ${messages.map((message, index) => {
+                        const collapseId = `mailboxMessage${message.uid || index}`;
+                        const headingId = `${collapseId}Heading`;
+                        return `
+                            <div class="accordion-item">
+                                <h2 class="accordion-header" id="${headingId}">
+                                    <button class="accordion-button ${index === 0 ? '' : 'collapsed'}" type="button" data-bs-toggle="collapse" data-bs-target="#${collapseId}" aria-expanded="${index === 0 ? 'true' : 'false'}" aria-controls="${collapseId}">
+                                        <div class="w-100">
+                                            <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap mb-1">
+                                                <div>
+                                                    <div class="fw-semibold">${escapeHtml(message.subject || '[sin asunto]')}</div>
+                                                    <div class="small text-secondary">${escapeHtml(message.from || 'Remitente no disponible')}</div>
+                                                </div>
+                                                <div class="text-end">
+                                                    <div class="small text-secondary">${escapeHtml(message.received_at_label || '')}</div>
+                                                    <span class="badge ${message.is_seen ? 'text-bg-light' : 'text-bg-primary'} rounded-pill">${message.is_seen ? 'Leído' : 'Nuevo'}</span>
+                                                </div>
+                                            </div>
+                                            <div class="mailbox-preview">${escapeHtml(message.preview || '[sin vista previa]')}</div>
+                                        </div>
+                                    </button>
+                                </h2>
+                                <div id="${collapseId}" class="accordion-collapse collapse ${index === 0 ? 'show' : ''}" aria-labelledby="${headingId}" data-bs-parent="#mailboxAccordion">
+                                    <div class="accordion-body">
+                                        <div class="mailbox-body">${message.body_html || '<p>[sin contenido]</p>'}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            `;
 
         userSearchResults.innerHTML = `
             <div class="user-profile-card mb-4">
                 <div class="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-3">
                     <div>
-                        <p class="text-primary fw-semibold mb-1">Información encontrada</p>
+                        <p class="text-primary fw-semibold mb-1">Bandeja de correo</p>
                         <h2 class="h4 mb-1">${escapeHtml(user.nombre || '')} ${escapeHtml(user.apellido || '')}</h2>
                         <div class="text-secondary">@${escapeHtml(user.username || '')}</div>
                     </div>
@@ -1693,20 +1986,21 @@ header('Expires: 0');
                 </div>
                 <div class="user-profile-grid">
                     <div class="user-profile-metric">
-                        <span class="user-profile-label">Correo</span>
-                        <div>${escapeHtml(user.email || '')}</div>
+                        <span class="user-profile-label">Cuenta consultada</span>
+                        <div>${escapeHtml(selectedEmail || 'No disponible')}</div>
                     </div>
                     <div class="user-profile-metric">
-                        <span class="user-profile-label">Teléfono</span>
-                        <div>${escapeHtml(user.telefono || 'Sin teléfono')}</div>
+                        <span class="user-profile-label">Ventana de búsqueda</span>
+                        <div>${escapeHtml(delayLabel)}</div>
                     </div>
                     <div class="user-profile-metric">
-                        <span class="user-profile-label">Cuentas asignadas</span>
-                        <div>${assignments.length} cuenta(s)</div>
+                        <span class="user-profile-label">Correos encontrados</span>
+                        <div>${messages.length} correo(s)</div>
                     </div>
                 </div>
             </div>
-            ${assignmentsMarkup}
+            ${selectedAssignmentMarkup}
+            ${messagesMarkup}
         `;
     }
 
@@ -1716,7 +2010,7 @@ header('Expires: 0');
         userIdentity.textContent = `${user.nombre} ${user.apellido} · ${user.username}`;
         userSearchEmail.value = '';
         userSearchEmail.placeholder = 'Escriba el correo a consultar';
-        renderUserModuleEmptyState('Escribe o selecciona una cuenta asignada y presiona Buscar información para ver los resultados.');
+        renderUserModuleEmptyState('Escribe o selecciona una cuenta asignada y presiona Consultar para ver los correos recientes.');
         showUserStatus('', 'secondary');
 
         if (animate) {
@@ -1745,7 +2039,7 @@ header('Expires: 0');
         };
         userSearchForm.reset();
         hideUserSearchOptions();
-        renderUserModuleEmptyState('Escribe o selecciona una cuenta asignada y presiona Buscar información para ver los resultados.');
+        renderUserModuleEmptyState('Escribe o selecciona una cuenta asignada y presiona Consultar para ver los correos recientes.');
         showUserStatus('', 'secondary');
         userView.classList.add('d-none');
         authView.classList.remove('d-none');
@@ -1923,6 +2217,33 @@ header('Expires: 0');
         history.replaceState({ prycorreosBase: true }, document.title, historyGuardUrl);
         history.pushState({ prycorreosGuard: true }, document.title, historyGuardUrl);
         historyGuardArmed = true;
+    }
+
+    function resetGlobalUiState() {
+        document.querySelectorAll('.modal.show').forEach((modalElement) => {
+            const instance = bootstrap.Modal.getInstance(modalElement);
+
+            if (instance) {
+                instance.hide();
+            }
+
+            modalElement.classList.remove('show');
+            modalElement.style.display = 'none';
+            modalElement.removeAttribute('aria-modal');
+            modalElement.setAttribute('aria-hidden', 'true');
+        });
+
+        document.querySelectorAll('.modal-backdrop').forEach((backdrop) => backdrop.remove());
+        document.body.classList.remove('modal-open');
+        document.body.style.removeProperty('overflow');
+        document.body.style.removeProperty('padding-right');
+        document.body.style.removeProperty('padding-left');
+        resetUserSearchUiState();
+    }
+
+    function redirectToLoggedOutState() {
+        resetGlobalUiState();
+        window.location.replace(historyGuardUrl);
     }
 
     function settleConfirmModal(result) {
@@ -2408,6 +2729,7 @@ header('Expires: 0');
         renderServices();
         renderRegisteredUsersTable();
         renderServiceAssignmentTable();
+        renderMailConfiguration();
 
         if (appState.selectedServiceId !== null) {
             renderServiceAccountsView();
@@ -2425,6 +2747,7 @@ header('Expires: 0');
             services: normalizeArray(result.services),
             accounts: normalizeArray(result.accounts),
             users: normalizeArray(result.users),
+            mail_configuration: result.mail_configuration || null,
         };
         renderOverview();
         showAdminStatus('Panel actualizado.', 'success');
@@ -2467,6 +2790,10 @@ header('Expires: 0');
         passwordRevealModalMessage.textContent = '';
         passwordRevealModalHint.textContent = 'Guárdala ahora porque no volverá a mostrarse.';
         copyPasswordRevealButton.textContent = 'Copiar';
+    });
+
+    userSearchLoadingModalElement.addEventListener('hidden.bs.modal', () => {
+        resetUserSearchUiState();
     });
 
     window.addEventListener('popstate', () => {
@@ -2554,30 +2881,7 @@ header('Expires: 0');
 
     userSearchForm.addEventListener('submit', async (event) => {
         event.preventDefault();
-        const selectedEmail = userSearchEmail.value.trim().toLowerCase();
-
-        if (!getUserModuleAssignments().some((assignment) => String(assignment.account_email).toLowerCase() === selectedEmail)) {
-            showUserStatus('Debes seleccionar una de las cuentas asignadas a tu usuario.', 'danger');
-            renderUserModuleEmptyState('Selecciona una cuenta válida desde el listado para consultar su información.');
-            renderUserSearchOptions(userSearchEmail.value, { forceOpen: true });
-            return;
-        }
-
-        hideUserSearchOptions();
-        showUserStatus('Buscando información de la cuenta seleccionada...', 'secondary');
-
-        try {
-            const result = await requestJson('./api/user/search.php', {
-                method: 'POST',
-                body: new FormData(userSearchForm),
-            });
-
-            renderUserSearchResult(result);
-            showUserStatus(result.message, result.found === false ? 'warning' : 'success');
-        } catch (error) {
-            userSearchResults.innerHTML = '<div class="empty-state">No fue posible cargar la información solicitada.</div>';
-            showUserStatus(error.message, 'danger');
-        }
+        await submitUserSearch({ source: 'manual' });
     });
 
     userSearchEmail.addEventListener('focus', () => {
@@ -2592,7 +2896,7 @@ header('Expires: 0');
         renderUserSearchOptions(userSearchEmail.value, { forceOpen: true });
     });
 
-    userSearchOptions.addEventListener('click', (event) => {
+    userSearchOptions.addEventListener('click', async (event) => {
         const option = event.target.closest('[data-user-assignment-email]');
 
         if (!option) {
@@ -2601,7 +2905,28 @@ header('Expires: 0');
 
         userSearchEmail.value = option.dataset.userAssignmentEmail || '';
         hideUserSearchOptions();
-        showUserStatus('Cuenta seleccionada. Presiona Buscar información para consultar los datos.', 'secondary');
+        await submitUserSearch({ source: 'auto' });
+    });
+
+    mailConfigForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        showAdminStatus('Guardando configuración de correo...', 'secondary');
+        mailConfigSubmitButton.disabled = true;
+
+        try {
+            const result = await requestJson('./api/admin/mail.php', {
+                method: 'POST',
+                body: new FormData(mailConfigForm),
+            });
+
+            appState.overview.mail_configuration = result.configuration || null;
+            renderMailConfiguration();
+            showAdminStatus(result.message, 'success');
+        } catch (error) {
+            showAdminStatus(error.message, 'danger');
+        } finally {
+            mailConfigSubmitButton.disabled = false;
+        }
     });
 
     document.addEventListener('click', (event) => {
@@ -3421,9 +3746,10 @@ header('Expires: 0');
 
     logoutButton.addEventListener('click', async () => {
         try {
+            userSearchLoadingModal.hide();
+            resetUserSearchUiState();
             await requestJson('./api/logout.php', { method: 'POST' });
-            leaveAdminMode();
-            showStatus('Sesión cerrada.', 'secondary');
+            redirectToLoggedOutState();
         } catch (error) {
             showAdminStatus(error.message, 'danger');
         }
@@ -3431,9 +3757,10 @@ header('Expires: 0');
 
     userLogoutButton.addEventListener('click', async () => {
         try {
+            userSearchLoadingModal.hide();
+            resetUserSearchUiState();
             await requestJson('./api/logout.php', { method: 'POST' });
-            leaveUserMode();
-            showStatus('Sesión cerrada.', 'secondary');
+            redirectToLoggedOutState();
         } catch (error) {
             showUserStatus(error.message, 'danger');
         }

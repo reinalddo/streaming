@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/session.php';
+require_once __DIR__ . '/mail.php';
 
 function requireRegisteredUser(): array
 {
@@ -68,12 +69,18 @@ function searchUserInformationByEmail(array $input): array
         return ['success' => true, 'found' => false, 'message' => 'Ese correo no está asignado a tu usuario.'];
     }
 
+    $mailConfiguration = fetchStoredMailConfiguration();
+
     return [
         'success' => true,
         'found' => true,
         'message' => 'Información encontrada correctamente.',
         'user' => normalizeUserProfile($user),
+        'selected_account_email' => $email,
         'assignments' => $matchedAssignments,
+        'messages' => fetchRecentMailboxMessagesForAssignedAccount($email),
+        'delay_days' => $mailConfiguration['delay_days'],
+        'delay_minutes' => $mailConfiguration['delay_minutes'],
     ];
 }
 

@@ -62,3 +62,15 @@ CREATE TABLE IF NOT EXISTS usuario_cuentas_servicio (
     CONSTRAINT fk_usuario_cuentas_usuario FOREIGN KEY (usuario_id) REFERENCES usuarios (id) ON DELETE CASCADE ON UPDATE CASCADE,
     CONSTRAINT fk_usuario_cuentas_cuenta FOREIGN KEY (cuenta_servicio_id) REFERENCES cuentas_servicio (id) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS configuracion_correo (
+    id TINYINT UNSIGNED NOT NULL DEFAULT 1,
+    imap_mailbox VARCHAR(255) NOT NULL,
+    imap_user VARCHAR(190) NOT NULL,
+    imap_password VARCHAR(255) NOT NULL,
+    delay_days INT UNSIGNED NOT NULL DEFAULT 0,
+    delay_minutes INT UNSIGNED NOT NULL DEFAULT 20,
+    max_messages INT UNSIGNED NOT NULL DEFAULT 20,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

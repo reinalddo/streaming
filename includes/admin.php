@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/session.php';
+require_once __DIR__ . '/mail.php';
 
 function getAdminOverview(): array
 {
@@ -90,6 +91,7 @@ function getAdminOverview(): array
         'services' => $servicesOutput,
         'accounts' => $accountsOutput,
         'users' => $usersOutput,
+        'mail_configuration' => formatMailConfigurationForClient(fetchStoredMailConfiguration($pdo)),
     ];
 }
 
