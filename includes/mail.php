@@ -110,8 +110,16 @@ function saveAdminMailConfiguration(array $input): array
     $delayMinutes = max(1, min(10080, (int) ($input['delay_minutes'] ?? DEFAULT_MAIL_DELAY_MINUTES)));
     $maxMessages = max(1, min(100, (int) ($input['max_messages'] ?? DEFAULT_MAIL_MAX_MESSAGES)));
 
-    if ($imapMailbox === '' || $imapUser === '') {
-        return ['success' => false, 'message' => 'Debes completar el buzón IMAP y el correo de acceso.'];
+    if ($imapMailbox === '') {
+        return ['success' => false, 'message' => 'Debes completar el buzón IMAP.'];
+    }
+
+    if ($imapUser === '') {
+        $imapUser = strtolower((string) ($current['imap_user'] ?? ''));
+    }
+
+    if ($imapUser === '') {
+        return ['success' => false, 'message' => 'Debes indicar el correo de acceso IMAP.'];
     }
 
     if ($imapPassword === '') {
@@ -144,7 +152,7 @@ function formatMailConfigurationForClient(array $configuration): array
 {
     return [
         'imap_mailbox' => (string) ($configuration['imap_mailbox'] ?? DEFAULT_IMAP_MAILBOX),
-        'imap_user' => (string) ($configuration['imap_user'] ?? ''),
+        'imap_user' => '',
         'imap_password' => '',
         'delay_days' => (int) ($configuration['delay_days'] ?? DEFAULT_MAIL_DELAY_DAYS),
         'delay_minutes' => (int) ($configuration['delay_minutes'] ?? DEFAULT_MAIL_DELAY_MINUTES),

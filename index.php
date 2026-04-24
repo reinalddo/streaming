@@ -671,7 +671,7 @@ header('Expires: 0');
                                 <div class="col-12 col-lg-9">
                                     <label class="form-label" for="userSearchEmail">Correo a consultar</label>
                                     <div class="user-search-select">
-                                        <input class="form-control" type="text" id="userSearchEmail" name="email" placeholder="Escriba el correo a consultar" autocomplete="off" required>
+                                        <input class="form-control" type="text" id="userSearchEmail" name="email" placeholder="Correo a Consultar" autocomplete="off" required>
                                         <div id="userSearchOptions" class="user-search-options d-none"></div>
                                     </div>
                                     <div id="userSearchHelp" class="form-text">Solo puedes buscar correos de cuentas que ya estén asignadas a tu usuario.</div>
@@ -1043,11 +1043,13 @@ header('Expires: 0');
                                     <div class="col-12 col-lg-6">
                                         <label class="form-label" for="mailConfigUser">Correo de acceso IMAP</label>
                                         <input class="form-control" type="email" id="mailConfigUser" name="imap_user" placeholder="contacto@dominio.com" required>
+                                                                            <input class="form-control" type="email" id="mailConfigUser" name="imap_user" placeholder="contacto@dominio.com" autocomplete="off" autocapitalize="off" spellcheck="false">
                                     </div>
                                     <div class="col-12 col-lg-6">
                                         <label class="form-label" for="mailConfigPassword">Clave del correo IMAP</label>
                                         <div class="password-field">
                                             <input class="form-control" type="password" id="mailConfigPassword" name="imap_password" placeholder="Deja en blanco para conservar la actual">
+                                                                                        <input class="form-control" type="password" id="mailConfigPassword" name="imap_password" placeholder="Deja en blanco para conservar la actual" autocomplete="new-password" autocapitalize="off" spellcheck="false">
                                             <button class="password-toggle" type="button" data-password-target="mailConfigPassword" aria-label="Mostrar clave">
                                                 <i class="bi bi-eye"></i>
                                             </button>
@@ -1995,6 +1997,8 @@ header('Expires: 0');
         userIdentity.textContent = `${appState.user.nombre} ${appState.user.apellido} · ${appState.user.username}`;
         userSearchEmail.value = '';
         userSearchEmail.placeholder = 'Escriba el correo a consultar';
+            userSearchEmail.placeholder = 'Correo a Consultar';
+            userSearchEmail.placeholder = 'Correo a Consultar';
         userSearchHelp.textContent = result.assignments.length > 0
             ? 'Puedes buscar por una cuenta asignada o por un correo relacionado que aparezca en remitente, destinatario o asunto.'
             : 'Aún no tienes cuentas asignadas. Cuando tengas una, aparecerá aquí para consultarla.';
@@ -2161,11 +2165,14 @@ header('Expires: 0');
             ${mailSearchNotice !== '' ? `<div class="alert alert-warning mb-4" role="alert">${escapeHtml(mailSearchNotice)}</div>` : ''}
             ${messagesMarkup}
         `;
+        userSearchEmail.value = '';
+        userSearchEmail.placeholder = 'Correo a Consultar';
 
         if (messages.length > 0) {
             loadUserMailboxMessage(messages[0].uid, selectedEmail);
         }
     }
+    userSearchEmail.placeholder = 'Correo a Consultar';
 
     async function enterUserMode(user, { animate = false } = {}) {
         appState.user = user;
