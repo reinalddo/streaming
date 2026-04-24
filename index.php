@@ -1042,14 +1042,12 @@ header('Expires: 0');
                                     </div>
                                     <div class="col-12 col-lg-6">
                                         <label class="form-label" for="mailConfigUser">Correo de acceso IMAP</label>
-                                        <input class="form-control" type="email" id="mailConfigUser" name="imap_user" placeholder="contacto@dominio.com" required>
-                                                                            <input class="form-control" type="email" id="mailConfigUser" name="imap_user" placeholder="contacto@dominio.com" autocomplete="off" autocapitalize="off" spellcheck="false">
+                                        <input class="form-control" type="email" id="mailConfigUser" name="imap_user" placeholder="contacto@dominio.com" autocomplete="off" autocapitalize="off" spellcheck="false" required>
                                     </div>
                                     <div class="col-12 col-lg-6">
                                         <label class="form-label" for="mailConfigPassword">Clave del correo IMAP</label>
                                         <div class="password-field">
-                                            <input class="form-control" type="password" id="mailConfigPassword" name="imap_password" placeholder="Deja en blanco para conservar la actual">
-                                                                                        <input class="form-control" type="password" id="mailConfigPassword" name="imap_password" placeholder="Deja en blanco para conservar la actual" autocomplete="new-password" autocapitalize="off" spellcheck="false">
+                                            <input class="form-control" type="password" id="mailConfigPassword" name="imap_password" placeholder="Deja en blanco para conservar la actual" autocomplete="new-password" autocapitalize="off" spellcheck="false">
                                             <button class="password-toggle" type="button" data-password-target="mailConfigPassword" aria-label="Mostrar clave">
                                                 <i class="bi bi-eye"></i>
                                             </button>

@@ -152,8 +152,8 @@ function formatMailConfigurationForClient(array $configuration): array
 {
     return [
         'imap_mailbox' => (string) ($configuration['imap_mailbox'] ?? DEFAULT_IMAP_MAILBOX),
-        'imap_user' => '',
-        'imap_password' => '',
+        'imap_user' => (string) ($configuration['imap_user'] ?? ''),
+        'imap_password' => (string) ($configuration['imap_password'] ?? ''),
         'delay_days' => (int) ($configuration['delay_days'] ?? DEFAULT_MAIL_DELAY_DAYS),
         'delay_minutes' => (int) ($configuration['delay_minutes'] ?? DEFAULT_MAIL_DELAY_MINUTES),
         'max_messages' => (int) ($configuration['max_messages'] ?? DEFAULT_MAIL_MAX_MESSAGES),
