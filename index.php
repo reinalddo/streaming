@@ -198,6 +198,23 @@ header('Expires: 0');
             height: 100%;
         }
 
+        .service-meta {
+            color: var(--pc-muted);
+            font-size: 0.84rem;
+        }
+
+        .import-status {
+            border-radius: 1rem;
+            margin-bottom: 0;
+        }
+
+        .import-results-list {
+            margin: 0;
+            padding-left: 1.1rem;
+            max-height: 220px;
+            overflow: auto;
+        }
+
         .service-logo {
             width: 56px;
             height: 56px;
@@ -995,9 +1012,15 @@ header('Expires: 0');
                                         <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
                                             <div>
                                                 <h2 class="section-title mb-0">Todos los servicios</h2>
-                                                <p class="section-subtitle mb-0">Consulta tus servicios disponibles y abre la vista de cuentas de cada uno.</p>
+                                                        <p class="section-subtitle mb-0">Consulta tus servicios disponibles, abre la vista de cuentas de cada uno o importa cuentas usando el ID Servicio del Excel.</p>
                                             </div>
-                                            <span id="serviceCountBadge" class="badge text-bg-primary rounded-pill"></span>
+                                                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                                                        <span id="serviceCountBadge" class="badge text-bg-primary rounded-pill"></span>
+                                                        <button id="openServiceImportButton" class="btn btn-outline-success" type="button">
+                                                            <i class="bi bi-file-earmark-arrow-up"></i>
+                                                            Importar Cuentas por Servicio
+                                                        </button>
+                                                    </div>
                                         </div>
                                         <div id="servicesList" class="row g-3"></div>
                                     </div>
@@ -1101,6 +1124,10 @@ header('Expires: 0');
                                     </div>
                                     <div class="d-flex align-items-center gap-2 flex-wrap">
                                         <span id="userCountBadge" class="badge text-bg-secondary rounded-pill"></span>
+                                        <button id="openUserImportButton" class="btn btn-outline-primary" type="button">
+                                            <i class="bi bi-file-earmark-arrow-up"></i>
+                                            Importar Cuentas de Usuario
+                                        </button>
                                         <button id="toggleCreateUserButton" class="btn btn-primary" type="button">
                                             <i class="bi bi-person-plus"></i>
                                             Registrar usuario
@@ -1506,6 +1533,63 @@ header('Expires: 0');
     </div>
 </div>
 
+<div class="modal fade" id="importModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div>
+                    <h2 id="importModalTitle" class="h5 mb-1">Importar registros</h2>
+                    <p id="importModalSubtitle" class="small text-secondary mb-0"></p>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" data-import-close="true" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <form id="importModalForm" class="row g-3" novalidate>
+                    <div class="col-12 d-flex justify-content-between align-items-start gap-2 flex-wrap">
+                        <div>
+                            <div class="small text-secondary">Encabezados requeridos</div>
+                            <div id="importModalExpectedHeaders" class="fw-semibold"></div>
+                        </div>
+                        <a id="importModalLayoutLink" class="btn btn-outline-secondary" href="./assets/layouts/ImportServicios.xlsx" download>
+                            <i class="bi bi-download"></i>
+                            Descargar Layout
+                        </a>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label" for="importModalFile">Archivo XLSX</label>
+                        <input class="form-control" type="file" id="importModalFile" name="archivo" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required>
+                        <div class="form-text">Solo se aceptan archivos .xlsx con el orden exacto de columnas solicitado.</div>
+                    </div>
+                    <div class="col-12">
+                        <div id="importModalStatus" class="alert alert-secondary import-status" role="status">Carga un archivo XLSX y presiona importar.</div>
+                    </div>
+                    <div id="importModalProgressWrapper" class="col-12 d-none">
+                        <div class="d-flex justify-content-between align-items-center small text-secondary mb-2 gap-2 flex-wrap">
+                            <span id="importModalProgressText">0%</span>
+                            <span id="importModalProgressSummary">0 de 0 procesados</span>
+                        </div>
+                        <div class="progress" role="progressbar" aria-label="Progreso de importación" aria-valuemin="0" aria-valuemax="100">
+                            <div id="importModalProgressBar" class="progress-bar progress-bar-striped progress-bar-animated" style="width:0%">0%</div>
+                        </div>
+                    </div>
+                    <div id="importModalResults" class="col-12 d-none">
+                        <div class="inline-card">
+                            <h3 class="h6 mb-2">Resultado de la importación</h3>
+                            <p id="importModalResultsSummary" class="small text-secondary mb-2"></p>
+                            <ul id="importModalErrorsList" class="import-results-list"></ul>
+                            <div id="importModalMoreErrors" class="small text-secondary mt-2 d-none"></div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal" data-import-close="true">Cerrar</button>
+                <button id="importModalSubmitButton" type="submit" form="importModalForm" class="btn btn-primary">Importar archivo</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="modal fade loading-modal" id="userSearchLoadingModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-sm">
         <div class="modal-content">
@@ -1628,6 +1712,7 @@ header('Expires: 0');
     const serviceAccountsPageSize = document.getElementById('serviceAccountsPageSize');
     const serviceAccountsSummary = document.getElementById('serviceAccountsSummary');
     const serviceAccountsPagination = document.getElementById('serviceAccountsPagination');
+    const openServiceImportButton = document.getElementById('openServiceImportButton');
     const backToServicesButton = document.getElementById('backToServicesButton');
     const toggleCreateAccountButton = document.getElementById('toggleCreateAccountButton');
     const createAccountPanel = document.getElementById('createAccountPanel');
@@ -1646,6 +1731,7 @@ header('Expires: 0');
     const registeredUsersSummary = document.getElementById('registeredUsersSummary');
     const registeredUsersPagination = document.getElementById('registeredUsersPagination');
     const userCountBadge = document.getElementById('userCountBadge');
+    const openUserImportButton = document.getElementById('openUserImportButton');
     const toggleCreateUserButton = document.getElementById('toggleCreateUserButton');
     const createUserPanel = document.getElementById('createUserPanel');
     const adminCreateUserForm = document.getElementById('adminCreateUserForm');
@@ -1708,6 +1794,26 @@ header('Expires: 0');
     const feedbackModalBody = document.getElementById('feedbackModalBody');
     const feedbackModal = new bootstrap.Modal(feedbackModalElement);
 
+    const importModalElement = document.getElementById('importModal');
+    const importModalTitle = document.getElementById('importModalTitle');
+    const importModalSubtitle = document.getElementById('importModalSubtitle');
+    const importModalForm = document.getElementById('importModalForm');
+    const importModalExpectedHeaders = document.getElementById('importModalExpectedHeaders');
+    const importModalLayoutLink = document.getElementById('importModalLayoutLink');
+    const importModalFile = document.getElementById('importModalFile');
+    const importModalStatus = document.getElementById('importModalStatus');
+    const importModalProgressWrapper = document.getElementById('importModalProgressWrapper');
+    const importModalProgressText = document.getElementById('importModalProgressText');
+    const importModalProgressSummary = document.getElementById('importModalProgressSummary');
+    const importModalProgressBar = document.getElementById('importModalProgressBar');
+    const importModalResults = document.getElementById('importModalResults');
+    const importModalResultsSummary = document.getElementById('importModalResultsSummary');
+    const importModalErrorsList = document.getElementById('importModalErrorsList');
+    const importModalMoreErrors = document.getElementById('importModalMoreErrors');
+    const importModalSubmitButton = document.getElementById('importModalSubmitButton');
+    const importModalCloseButtons = importModalElement.querySelectorAll('[data-import-close="true"]');
+    const importModal = new bootstrap.Modal(importModalElement);
+
     const userSearchLoadingModalElement = document.getElementById('userSearchLoadingModal');
     const userSearchLoadingModal = new bootstrap.Modal(userSearchLoadingModalElement);
 
@@ -1760,6 +1866,32 @@ header('Expires: 0');
             mail_configuration: null,
         },
         userSearchPending: false,
+        adminImport: {
+            mode: '',
+            selectedServiceId: null,
+            selectedServiceName: '',
+            importKey: '',
+            processing: false,
+        },
+    };
+
+    const IMPORT_CONFIG = {
+        services: {
+            title: 'Importar Cuentas por Servicio',
+            subtitle: 'Carga un archivo XLSX para registrar cuentas masivamente. El servicio se determina con la columna ID Servicio del archivo.',
+            layoutHref: './assets/layouts/ImportServicios.xlsx',
+            buttonLabel: 'Importar Cuentas por Servicio',
+            previewAction: 'preview_services',
+            headers: ['ID Servicio', 'Correo', 'Contraseña', 'Descripción'],
+        },
+        users: {
+            title: 'Importar Cuentas de Usuario',
+            subtitle: 'Carga un archivo XLSX para registrar usuarios en lote con la clave cifrada.',
+            layoutHref: './assets/layouts/ImportUsuarios.xlsx',
+            buttonLabel: 'Importar Cuentas de Usuario',
+            previewAction: 'preview_users',
+            headers: ['Nombre', 'Usuario', 'Correo', 'Clave', 'Teléfono'],
+        },
     };
 
     const historyGuardUrl = `${window.location.pathname}${window.location.search}${window.location.hash}`;
@@ -2644,6 +2776,192 @@ header('Expires: 0');
         feedbackModal.show();
     }
 
+    function resetImportModal() {
+        importModalForm.reset();
+        importModalStatus.className = 'alert alert-secondary import-status';
+        importModalStatus.textContent = 'Carga un archivo XLSX y presiona importar.';
+        importModalProgressWrapper.classList.add('d-none');
+        importModalResults.classList.add('d-none');
+        importModalErrorsList.innerHTML = '';
+        importModalResultsSummary.textContent = '';
+        importModalMoreErrors.textContent = '';
+        importModalMoreErrors.classList.add('d-none');
+        updateImportProgress({ processedCount: 0, totalRows: 0, insertedCount: 0, errorCount: 0 });
+        setImportModalBusy(false);
+        appState.adminImport = {
+            mode: '',
+            selectedServiceId: null,
+            selectedServiceName: '',
+            importKey: '',
+            processing: false,
+        };
+    }
+
+    function setImportModalStatus(message, tone = 'secondary') {
+        importModalStatus.className = `alert alert-${tone} import-status`;
+        importModalStatus.textContent = message;
+    }
+
+    function setImportModalBusy(isBusy) {
+        appState.adminImport.processing = isBusy;
+        importModalSubmitButton.disabled = isBusy;
+        importModalFile.disabled = isBusy;
+        importModalLayoutLink.classList.toggle('disabled', isBusy);
+
+        importModalCloseButtons.forEach((button) => {
+            button.disabled = isBusy;
+        });
+    }
+
+    function updateImportProgress({ processedCount, totalRows, insertedCount, errorCount }) {
+        const safeTotal = Math.max(0, Number(totalRows) || 0);
+        const safeProcessed = Math.max(0, Math.min(Number(processedCount) || 0, safeTotal));
+        const percentage = safeTotal === 0 ? 0 : Math.round((safeProcessed / safeTotal) * 100);
+        const updatedCount = Math.max(0, Number(arguments[0]?.updatedCount) || 0);
+        const skippedExistingCount = Math.max(0, Number(arguments[0]?.skippedExistingCount) || 0);
+
+        importModalProgressText.textContent = `${percentage}% completado`;
+        importModalProgressSummary.textContent = `${safeProcessed} de ${safeTotal} procesados · ${Number(insertedCount) || 0} insertados · ${updatedCount} actualizados · ${skippedExistingCount} omitidos existentes · ${Number(errorCount) || 0} con error`;
+        importModalProgressBar.style.width = `${percentage}%`;
+        importModalProgressBar.textContent = `${percentage}%`;
+        importModalProgressBar.classList.toggle('progress-bar-animated', percentage < 100);
+        importModalProgressBar.classList.toggle('progress-bar-striped', percentage < 100);
+    }
+
+    function renderImportResults(result) {
+        const notices = normalizeArray(result.notices).filter((item) => typeof item === 'string' && item.trim() !== '');
+        const errors = normalizeArray(result.errors).filter((item) => typeof item === 'string' && item.trim() !== '');
+        const details = [...notices, ...errors];
+        importModalResults.classList.remove('d-none');
+        importModalResultsSummary.textContent = `${Number(result.inserted_count) || 0} registro(s) insertado(s), ${Number(result.updated_count) || 0} actualizado(s), ${Number(result.skipped_existing_count) || 0} omitido(s) por existir y ${Number(result.error_count) || 0} fila(s) con error.`;
+
+        if (details.length === 0) {
+            importModalErrorsList.innerHTML = '<li>Sin observaciones reportadas.</li>';
+        } else {
+            importModalErrorsList.innerHTML = details.map((detail) => `<li>${escapeHtml(detail)}</li>`).join('');
+        }
+
+        if (Number(result.hidden_error_count) > 0) {
+            importModalMoreErrors.textContent = `Además existen ${Number(result.hidden_error_count)} error(es) adicionales que no se muestran en pantalla.`;
+            importModalMoreErrors.classList.remove('d-none');
+        } else {
+            importModalMoreErrors.textContent = '';
+            importModalMoreErrors.classList.add('d-none');
+        }
+    }
+
+    function openImportModal({ mode, serviceId = null }) {
+        const config = IMPORT_CONFIG[mode];
+
+        if (!config) {
+            return;
+        }
+
+        resetImportModal();
+        appState.adminImport.mode = mode;
+
+        if (mode === 'services') {
+            importModalTitle.textContent = config.title;
+            importModalSubtitle.textContent = config.subtitle;
+        } else {
+            importModalTitle.textContent = config.title;
+            importModalSubtitle.textContent = config.subtitle;
+        }
+
+        importModalExpectedHeaders.textContent = config.headers.join(' | ');
+        importModalLayoutLink.href = config.layoutHref;
+        importModalSubmitButton.textContent = config.buttonLabel;
+        importModal.show();
+    }
+
+    async function processImportBatches() {
+        while (appState.adminImport.importKey !== '') {
+            const processData = new FormData();
+            processData.append('action', 'process');
+            processData.append('import_key', appState.adminImport.importKey);
+
+            const result = await requestJson('./api/admin/imports.php', {
+                method: 'POST',
+                body: processData,
+            });
+
+            importModalProgressWrapper.classList.remove('d-none');
+            updateImportProgress({
+                processedCount: result.processed_count,
+                totalRows: result.total_rows,
+                insertedCount: result.inserted_count,
+                updatedCount: result.updated_count,
+                skippedExistingCount: result.skipped_existing_count,
+                errorCount: result.error_count,
+            });
+            setImportModalStatus(result.message, result.completed && Number(result.error_count) > 0 ? 'warning' : 'secondary');
+
+            if (!result.completed) {
+                continue;
+            }
+
+            renderImportResults(result);
+            setImportModalStatus(result.message, Number(result.error_count) > 0 ? 'warning' : 'success');
+            showAdminStatus(result.message, Number(result.error_count) > 0 ? 'warning' : 'success');
+            appState.adminImport.importKey = '';
+            await loadAdminOverview();
+            break;
+        }
+    }
+
+    async function startImportProcess() {
+        if (appState.adminImport.processing) {
+            return;
+        }
+
+        const config = IMPORT_CONFIG[appState.adminImport.mode];
+
+        if (!config) {
+            setImportModalStatus('Selecciona primero el tipo de importación.', 'danger');
+            return;
+        }
+
+        const file = importModalFile.files && importModalFile.files[0] ? importModalFile.files[0] : null;
+
+        if (!file) {
+            setImportModalStatus('Debes seleccionar un archivo XLSX para continuar.', 'danger');
+            importModalFile.focus();
+            return;
+        }
+
+        setImportModalBusy(true);
+        importModalProgressWrapper.classList.remove('d-none');
+        updateImportProgress({ processedCount: 0, totalRows: 0, insertedCount: 0, errorCount: 0 });
+        setImportModalStatus('Validando archivo XLSX...', 'secondary');
+
+        try {
+            const previewData = new FormData();
+            previewData.append('action', config.previewAction);
+            previewData.append('archivo', file);
+
+            const previewResult = await requestJson('./api/admin/imports.php', {
+                method: 'POST',
+                body: previewData,
+            });
+
+            appState.adminImport.importKey = previewResult.import_key || '';
+            updateImportProgress({
+                processedCount: 0,
+                totalRows: previewResult.total_rows,
+                insertedCount: 0,
+                updatedCount: 0,
+                skippedExistingCount: 0,
+                errorCount: 0,
+            });
+            setImportModalStatus(previewResult.message, 'secondary');
+            await processImportBatches();
+        } catch (error) {
+            setImportModalStatus(error.message, 'danger');
+        } finally {
+            setImportModalBusy(false);
+        }
+    }
+
     function showPasswordRevealModal({ title, message, password, hint = 'Guárdala ahora porque no volverá a mostrarse.' }) {
         passwordRevealModalTitle.textContent = title;
         passwordRevealModalMessage.textContent = message;
@@ -2724,6 +3042,7 @@ header('Expires: 0');
                                         ${escapeHtml(service.color_destacado)}
                                     </span>
                                 </div>
+                                <div class="service-meta mt-1">ID: ${escapeHtml(service.id)}</div>
                                 <p class="small text-secondary mt-2 mb-0">${escapeHtml(service.descripcion || 'Sin descripción registrada.')}</p>
                             </div>
                         </div>
@@ -3257,6 +3576,12 @@ header('Expires: 0');
         resetUserSearchUiState();
     });
 
+    importModalElement.addEventListener('hidden.bs.modal', () => {
+        if (!appState.adminImport.processing) {
+            resetImportModal();
+        }
+    });
+
     window.addEventListener('popstate', () => {
         if (!historyGuardArmed) {
             return;
@@ -3551,6 +3876,19 @@ header('Expires: 0');
     cancelCreateUserButton.addEventListener('click', () => {
         resetCreateUserForm();
         createUserPanel.classList.add('d-none');
+    });
+
+    openUserImportButton.addEventListener('click', () => {
+        openImportModal({ mode: 'users' });
+    });
+
+    openServiceImportButton.addEventListener('click', () => {
+        openImportModal({ mode: 'services' });
+    });
+
+    importModalForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        await startImportProcess();
     });
 
     registeredUsersSearchInput.addEventListener('input', () => {
