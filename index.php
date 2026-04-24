@@ -2,6 +2,12 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/includes/admin.php';
+
+$publicAppSettings = getPublicAppConfiguration();
+$initialPageName = trim((string) ($publicAppSettings['nombre_pagina'] ?? '')) !== '' ? (string) $publicAppSettings['nombre_pagina'] : 'Prycorreos';
+$initialFavicon = $publicAppSettings['logo_url'] ?? null;
+
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Cache-Control: post-check=0, pre-check=0', false);
 header('Pragma: no-cache');
@@ -13,7 +19,8 @@ header('Expires: 0');
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Prycorreos | Acceso</title>
+    <title><?= htmlspecialchars($initialPageName, ENT_QUOTES, 'UTF-8') ?> | Acceso</title>
+    <link id="appFavicon" rel="icon" href="<?= htmlspecialchars((string) ($initialFavicon ?? 'data:,'), ENT_QUOTES, 'UTF-8') ?>">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <style>
@@ -213,6 +220,20 @@ header('Expires: 0');
             padding-left: 1.1rem;
             max-height: 220px;
             overflow: auto;
+        }
+
+        .admin-branding-preview {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 0.9rem 1rem;
+            border: 1px dashed var(--pc-border);
+            border-radius: 1rem;
+            background: #fbfdff;
+        }
+
+        .admin-branding-preview-copy {
+            min-width: 0;
         }
 
         .service-logo {
@@ -958,6 +979,9 @@ header('Expires: 0');
                         <li class="nav-item" role="presentation">
                             <button class="nav-link" id="mail-config-tab" data-bs-toggle="pill" data-bs-target="#mail-config-pane" type="button" role="tab" aria-controls="mail-config-pane" aria-selected="false">Configuración Correo</button>
                         </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="admin-data-tab" data-bs-toggle="pill" data-bs-target="#admin-data-pane" type="button" role="tab" aria-controls="admin-data-pane" aria-selected="false">Datos Admin</button>
+                        </li>
                     </ul>
 
                     <div class="tab-content">
@@ -1331,6 +1355,74 @@ header('Expires: 0');
                                 </form>
                             </div>
                         </div>
+
+                        <div class="tab-pane fade" id="admin-data-pane" role="tabpanel" aria-labelledby="admin-data-tab" tabindex="0">
+                            <div class="dashboard-block">
+                                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+                                    <div>
+                                        <h2 class="section-title mb-0">Datos Admin</h2>
+                                        <p class="section-subtitle mb-0">Actualiza los datos del administrador, el nombre del sitio y el logo general de la página.</p>
+                                    </div>
+                                </div>
+
+                                <form id="adminDataForm" class="row g-3" novalidate enctype="multipart/form-data">
+                                    <div class="col-12 col-md-6 col-xl-3">
+                                        <label class="form-label" for="adminDataNombre">Nombre</label>
+                                        <input class="form-control" type="text" id="adminDataNombre" name="nombre" required>
+                                    </div>
+                                    <div class="col-12 col-md-6 col-xl-3">
+                                        <label class="form-label" for="adminDataApellido">Apellido</label>
+                                        <input class="form-control" type="text" id="adminDataApellido" name="apellido" required>
+                                    </div>
+                                    <div class="col-12 col-md-6 col-xl-2">
+                                        <label class="form-label" for="adminDataUsername">Usuario</label>
+                                        <input class="form-control" type="text" id="adminDataUsername" name="username" required>
+                                    </div>
+                                    <div class="col-12 col-md-6 col-xl-4">
+                                        <label class="form-label" for="adminDataEmail">Correo</label>
+                                        <input class="form-control" type="email" id="adminDataEmail" name="email" required>
+                                    </div>
+                                    <div class="col-12 col-md-6 col-xl-4">
+                                        <label class="form-label" for="adminDataPhone">Teléfono</label>
+                                        <input class="form-control" type="text" id="adminDataPhone" name="telefono">
+                                    </div>
+                                    <div class="col-12 col-md-6 col-xl-4">
+                                        <label class="form-label" for="adminDataPassword">Nueva clave del administrador</label>
+                                        <div class="password-field">
+                                            <input class="form-control" type="password" id="adminDataPassword" name="password" placeholder="Deja en blanco para conservar la actual" autocomplete="new-password">
+                                            <button class="password-toggle" type="button" data-password-target="adminDataPassword" aria-label="Mostrar clave">
+                                                <i class="bi bi-eye"></i>
+                                            </button>
+                                        </div>
+                                        <div class="form-text">Opcional. Si escribes una clave nueva, reemplazará la actual.</div>
+                                    </div>
+                                    <div class="col-12 col-md-6 col-xl-4">
+                                        <label class="form-label" for="adminDataPageName">Nombre de la página</label>
+                                        <input class="form-control" type="text" id="adminDataPageName" name="nombre_pagina" placeholder="Prycorreos" required>
+                                        <div class="form-text">Este valor se utilizará en el `title` de la página.</div>
+                                    </div>
+                                    <div class="col-12 col-xl-4">
+                                        <label class="form-label" for="adminDataPageLogo">Logo general de la página</label>
+                                        <input class="form-control" type="file" id="adminDataPageLogo" name="logo_pagina" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml">
+                                        <div class="form-text">Selecciona una imagen para el logo general. Se guardará en `assets/branding`.</div>
+                                    </div>
+                                    <div id="currentAdminLogoWrapper" class="col-12 d-none">
+                                        <div class="admin-branding-preview">
+                                            <div class="service-logo-preview">
+                                                <img id="currentAdminLogoImage" src="" alt="Logo actual de la página">
+                                            </div>
+                                            <div class="admin-branding-preview-copy">
+                                                <div class="fw-semibold">Logo actual de la página</div>
+                                                <div id="currentAdminLogoLabel" class="small text-secondary">Se usará para el branding global del sitio.</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-12 d-grid d-lg-flex justify-content-lg-end">
+                                        <button id="adminDataSubmitButton" class="btn btn-primary" type="submit">Guardar Datos Admin</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </section>
@@ -1672,6 +1764,11 @@ header('Expires: 0');
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
 <script>
+    const INITIAL_PUBLIC_APP_SETTINGS = <?= json_encode([
+        'nombre_pagina' => $initialPageName,
+        'logo_url' => $initialFavicon,
+    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+
     const authView = document.getElementById('authView');
     const userView = document.getElementById('userView');
     const adminView = document.getElementById('adminView');
@@ -1751,6 +1848,20 @@ header('Expires: 0');
     const mailConfigMaxMessages = document.getElementById('mailConfigMaxMessages');
     const mailConfigDelayBadge = document.getElementById('mailConfigDelayBadge');
     const mailConfigSubmitButton = document.getElementById('mailConfigSubmitButton');
+    const adminDataForm = document.getElementById('adminDataForm');
+    const adminDataNombre = document.getElementById('adminDataNombre');
+    const adminDataApellido = document.getElementById('adminDataApellido');
+    const adminDataUsername = document.getElementById('adminDataUsername');
+    const adminDataEmail = document.getElementById('adminDataEmail');
+    const adminDataPhone = document.getElementById('adminDataPhone');
+    const adminDataPassword = document.getElementById('adminDataPassword');
+    const adminDataPageName = document.getElementById('adminDataPageName');
+    const adminDataPageLogo = document.getElementById('adminDataPageLogo');
+    const currentAdminLogoWrapper = document.getElementById('currentAdminLogoWrapper');
+    const currentAdminLogoImage = document.getElementById('currentAdminLogoImage');
+    const currentAdminLogoLabel = document.getElementById('currentAdminLogoLabel');
+    const adminDataSubmitButton = document.getElementById('adminDataSubmitButton');
+    const appFavicon = document.getElementById('appFavicon');
 
     const assignedUsersModalElement = document.getElementById('assignedUsersModal');
     const assignedUsersModalTitle = document.getElementById('assignedUsersModalTitle');
@@ -1863,6 +1974,8 @@ header('Expires: 0');
             services: [],
             accounts: [],
             users: [],
+            admin_profile: null,
+            admin_settings: null,
             mail_configuration: null,
         },
         userSearchPending: false,
@@ -2044,6 +2157,29 @@ header('Expires: 0');
 
     function getMailConfiguration() {
         return appState.overview.mail_configuration || null;
+    }
+
+    function getAdminProfile() {
+        return appState.overview.admin_profile || null;
+    }
+
+    function getAdminSettings() {
+        return appState.overview.admin_settings || INITIAL_PUBLIC_APP_SETTINGS;
+    }
+
+    function buildPageTitle(sectionLabel = 'Acceso') {
+        const settings = getAdminSettings();
+        const pageName = String(settings?.nombre_pagina || INITIAL_PUBLIC_APP_SETTINGS.nombre_pagina || 'Prycorreos').trim() || 'Prycorreos';
+        return sectionLabel ? `${pageName} | ${sectionLabel}` : pageName;
+    }
+
+    function applyPublicAppBranding(sectionLabel = 'Acceso') {
+        const settings = getAdminSettings();
+        document.title = buildPageTitle(sectionLabel);
+
+        if (appFavicon) {
+            appFavicon.href = settings?.logo_url || 'data:,';
+        }
     }
 
     function getServiceById(serviceId) {
@@ -2390,6 +2526,36 @@ header('Expires: 0');
         mailConfigDelayBadge.textContent = formatMailDelayLabel(delayDays, delayMinutes);
     }
 
+    function renderAdminDataConfiguration() {
+        const profile = getAdminProfile();
+        const settings = getAdminSettings();
+
+        if (!adminDataForm || !profile) {
+            return;
+        }
+
+        adminDataNombre.value = profile.nombre || '';
+        adminDataApellido.value = profile.apellido || '';
+        adminDataUsername.value = profile.username || '';
+        adminDataEmail.value = profile.email || '';
+        adminDataPhone.value = profile.telefono || '';
+        adminDataPassword.value = '';
+        adminDataPageName.value = settings?.nombre_pagina || INITIAL_PUBLIC_APP_SETTINGS.nombre_pagina || 'Prycorreos';
+        adminDataPageLogo.value = '';
+
+        if (settings?.logo_url) {
+            currentAdminLogoImage.src = settings.logo_url;
+            currentAdminLogoLabel.textContent = settings.nombre_pagina
+                ? `Branding actual de ${settings.nombre_pagina}.`
+                : 'Se usará para el branding global del sitio.';
+            currentAdminLogoWrapper.classList.remove('d-none');
+        } else {
+            currentAdminLogoImage.src = '';
+            currentAdminLogoLabel.textContent = 'Se usará para el branding global del sitio.';
+            currentAdminLogoWrapper.classList.add('d-none');
+        }
+    }
+
     async function loadUserModuleOverview() {
         const result = await requestJson('./api/user/overview.php');
         appState.userModule.profile = result.user || null;
@@ -2583,6 +2749,7 @@ header('Expires: 0');
         appState.user = user;
         adminView.classList.add('d-none');
         userIdentity.textContent = `${user.nombre} ${user.apellido} · ${user.username}`;
+        applyPublicAppBranding('Usuario');
         userSearchEmail.value = '';
         userSearchEmail.placeholder = 'Escriba el correo a consultar';
         renderUserModuleEmptyState('Escribe o selecciona una cuenta asignada y presiona Consultar para ver los correos recientes.');
@@ -2604,6 +2771,7 @@ header('Expires: 0');
         userView.classList.add('d-none');
         adminView.classList.remove('d-none');
         adminIdentity.textContent = `${user.nombre} ${user.apellido} · ${user.username}`;
+        applyPublicAppBranding('Administración');
     }
 
     function leaveUserMode() {
@@ -2618,6 +2786,7 @@ header('Expires: 0');
         showUserStatus('', 'secondary');
         userView.classList.add('d-none');
         authView.classList.remove('d-none');
+        applyPublicAppBranding('Acceso');
     }
 
     function leaveAdminMode() {
@@ -2638,6 +2807,7 @@ header('Expires: 0');
         appState.selectedUserAssignmentsUserId = null;
         showServicesOverview();
         showAdminStatus('', 'secondary');
+        applyPublicAppBranding('Acceso');
     }
 
     function showServicesOverview() {
@@ -3510,6 +3680,8 @@ header('Expires: 0');
         renderRegisteredUsersTable();
         renderServiceAssignmentTable();
         renderMailConfiguration();
+        renderAdminDataConfiguration();
+        applyPublicAppBranding(appState.user?.role === 'admin' ? 'Administración' : 'Acceso');
 
         if (appState.selectedServiceId !== null) {
             renderServiceAccountsView();
@@ -3527,6 +3699,8 @@ header('Expires: 0');
             services: normalizeArray(result.services),
             accounts: normalizeArray(result.accounts),
             users: normalizeArray(result.users),
+            admin_profile: result.admin_profile || null,
+            admin_settings: result.admin_settings || INITIAL_PUBLIC_APP_SETTINGS,
             mail_configuration: result.mail_configuration || null,
         };
         renderOverview();
@@ -3745,6 +3919,35 @@ header('Expires: 0');
             showAdminStatus(error.message, 'danger');
         } finally {
             mailConfigSubmitButton.disabled = false;
+        }
+    });
+
+    adminDataForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        showAdminStatus('Guardando datos del administrador...', 'secondary');
+        adminDataSubmitButton.disabled = true;
+
+        try {
+            const result = await requestJson('./api/admin/admin-data.php', {
+                method: 'POST',
+                body: new FormData(adminDataForm),
+            });
+
+            appState.user = {
+                ...(appState.user || {}),
+                ...(result.admin_profile || {}),
+                role: 'admin',
+            };
+            appState.overview.admin_profile = result.admin_profile || null;
+            appState.overview.admin_settings = result.admin_settings || INITIAL_PUBLIC_APP_SETTINGS;
+            adminIdentity.textContent = `${appState.user.nombre} ${appState.user.apellido} · ${appState.user.username}`;
+            renderAdminDataConfiguration();
+            applyPublicAppBranding('Administración');
+            showAdminStatus(result.message, 'success');
+        } catch (error) {
+            showAdminStatus(error.message, 'danger');
+        } finally {
+            adminDataSubmitButton.disabled = false;
         }
     });
 
@@ -4637,6 +4840,7 @@ header('Expires: 0');
     });
 
     armHistoryGuard();
+    applyPublicAppBranding('Acceso');
     scheduleResponsiveTableSync();
     bootstrapSession();
 </script>

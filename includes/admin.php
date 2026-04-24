@@ -8,9 +8,10 @@ require_once __DIR__ . '/mail.php';
 
 function getAdminOverview(): array
 {
-    requireAdminUser();
+    $authenticatedUser = requireAdminUser();
 
     $pdo = getPdo();
+    $adminProfile = fetchAdminProfile($pdo, (int) $authenticatedUser['id']);
 
     $services = $pdo->query('SELECT id, nombre, slug, logo_url, color_destacado, descripcion, activo, created_at FROM servicios ORDER BY nombre ASC')->fetchAll();
     $accounts = $pdo->query('SELECT cs.id, cs.servicio_id, cs.correo_acceso, cs.password_acceso, cs.descripcion, cs.activo, s.nombre AS servicio_nombre, s.logo_url, s.color_destacado FROM cuentas_servicio cs INNER JOIN servicios s ON s.id = cs.servicio_id ORDER BY s.nombre ASC, cs.correo_acceso ASC')->fetchAll();
@@ -91,7 +92,114 @@ function getAdminOverview(): array
         'services' => $servicesOutput,
         'accounts' => $accountsOutput,
         'users' => $usersOutput,
+        'admin_profile' => $adminProfile,
+        'admin_settings' => fetchStoredAdminConfiguration($pdo),
         'mail_configuration' => formatMailConfigurationForClient(fetchStoredMailConfiguration($pdo)),
+    ];
+}
+
+function getPublicAppConfiguration(): array
+{
+    return fetchStoredAdminConfiguration();
+}
+
+function saveAdminConfiguration(array $input, array $files = []): array
+{
+    $authenticatedUser = requireAdminUser();
+    $name = trim((string) ($input['nombre'] ?? ''));
+    $lastName = trim((string) ($input['apellido'] ?? ''));
+    $username = trim((string) ($input['username'] ?? ''));
+    $email = strtolower(trim((string) ($input['email'] ?? '')));
+    $phone = trim((string) ($input['telefono'] ?? ''));
+    $pageName = trim((string) ($input['nombre_pagina'] ?? ''));
+    $password = (string) ($input['password'] ?? '');
+
+    if ($name === '' || $lastName === '' || $username === '' || $email === '' || $pageName === '') {
+        return ['success' => false, 'message' => 'Completa los datos obligatorios del administrador y el nombre de la página.'];
+    }
+
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        return ['success' => false, 'message' => 'El correo del administrador no es válido.'];
+    }
+
+    if ($password !== '' && mb_strlen($password) < 6) {
+        return ['success' => false, 'message' => 'La nueva clave del administrador debe tener al menos 6 caracteres.'];
+    }
+
+    $pdo = getPdo();
+    ensureAdminConfigurationTable($pdo);
+    $currentAdmin = fetchAdminProfile($pdo, (int) $authenticatedUser['id']);
+    $currentSettings = fetchStoredAdminConfiguration($pdo);
+    $dupStmt = $pdo->prepare('SELECT id FROM usuarios WHERE (email = :email OR username = :username) AND id <> :id LIMIT 1');
+    $dupStmt->execute([
+        'email' => $email,
+        'username' => $username,
+        'id' => $authenticatedUser['id'],
+    ]);
+
+    if ($dupStmt->fetch() !== false) {
+        return ['success' => false, 'message' => 'Ese correo o usuario ya pertenece a otra cuenta.'];
+    }
+
+    $newLogoPath = uploadAdminSiteLogo($files['logo_pagina'] ?? null);
+    $finalLogoPath = $newLogoPath ?? ($currentSettings['logo_url'] !== '' ? $currentSettings['logo_url'] : null);
+
+    $pdo->beginTransaction();
+
+    try {
+        $adminParams = [
+            'nombre' => $name,
+            'apellido' => $lastName,
+            'username' => $username,
+            'email' => $email,
+            'telefono' => $phone !== '' ? $phone : null,
+            'id' => $authenticatedUser['id'],
+        ];
+
+        if ($password !== '') {
+            $updateAdminStmt = $pdo->prepare("UPDATE usuarios SET nombre = :nombre, apellido = :apellido, username = :username, email = :email, telefono = :telefono, password_hash = :password_hash WHERE id = :id AND role = 'admin'");
+            $adminParams['password_hash'] = password_hash($password, PASSWORD_DEFAULT);
+        } else {
+            $updateAdminStmt = $pdo->prepare("UPDATE usuarios SET nombre = :nombre, apellido = :apellido, username = :username, email = :email, telefono = :telefono WHERE id = :id AND role = 'admin'");
+        }
+
+        $updateAdminStmt->execute($adminParams);
+
+        $saveSettingsStmt = $pdo->prepare('INSERT INTO configuracion_admin (id, nombre_pagina, logo_url) VALUES (1, :nombre_pagina, :logo_url) ON DUPLICATE KEY UPDATE nombre_pagina = VALUES(nombre_pagina), logo_url = VALUES(logo_url)');
+        $saveSettingsStmt->execute([
+            'nombre_pagina' => $pageName,
+            'logo_url' => $finalLogoPath,
+        ]);
+
+        $pdo->commit();
+    } catch (Throwable $exception) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+
+        deleteLocalAdminBrandAsset($newLogoPath);
+        throw $exception;
+    }
+
+    if ($newLogoPath !== null) {
+        deleteLocalAdminBrandAsset($currentSettings['logo_url'] ?? null);
+    }
+
+    $updatedUser = [
+        'id' => (int) $authenticatedUser['id'],
+        'nombre' => $name,
+        'apellido' => $lastName,
+        'username' => $username,
+        'email' => $email,
+        'role' => 'admin',
+    ];
+    setAuthenticatedUser($updatedUser);
+
+    return [
+        'success' => true,
+        'message' => 'Los datos del administrador fueron actualizados correctamente.',
+        'admin_profile' => $updatedUser + ['telefono' => $phone !== '' ? $phone : null],
+        'admin_settings' => fetchStoredAdminConfiguration($pdo),
     ];
 }
 
@@ -673,7 +781,83 @@ function normalizeServicePayload(array $input): array
     ];
 }
 
+function fetchAdminProfile(PDO $pdo, int $adminUserId): array
+{
+    $stmt = $pdo->prepare("SELECT id, nombre, apellido, username, email, telefono FROM usuarios WHERE id = :id AND role = 'admin' LIMIT 1");
+    $stmt->execute(['id' => $adminUserId]);
+    $admin = $stmt->fetch();
+
+    if ($admin === false) {
+        throw new RuntimeException('No fue posible cargar el perfil del administrador.');
+    }
+
+    return [
+        'id' => (int) $admin['id'],
+        'nombre' => (string) $admin['nombre'],
+        'apellido' => (string) $admin['apellido'],
+        'username' => (string) $admin['username'],
+        'email' => (string) $admin['email'],
+        'telefono' => $admin['telefono'] !== null ? (string) $admin['telefono'] : null,
+    ];
+}
+
+function ensureAdminConfigurationTable(?PDO $pdo = null): void
+{
+    $pdo ??= getPdo();
+    $pdo->exec(
+        'CREATE TABLE IF NOT EXISTS configuracion_admin (
+            id TINYINT UNSIGNED NOT NULL DEFAULT 1,
+            nombre_pagina VARCHAR(160) NOT NULL DEFAULT "Prycorreos",
+            logo_url VARCHAR(255) NULL,
+            updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY (id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci'
+    );
+
+    $pdo->exec("INSERT IGNORE INTO configuracion_admin (id, nombre_pagina, logo_url) VALUES (1, 'Prycorreos', NULL)");
+}
+
+function fetchStoredAdminConfiguration(?PDO $pdo = null): array
+{
+    $pdo ??= getPdo();
+    ensureAdminConfigurationTable($pdo);
+    $stmt = $pdo->query('SELECT id, nombre_pagina, logo_url, updated_at FROM configuracion_admin WHERE id = 1 LIMIT 1');
+    $configuration = $stmt->fetch();
+
+    if ($configuration === false) {
+        return [
+            'id' => 1,
+            'nombre_pagina' => 'Prycorreos',
+            'logo_url' => null,
+            'updated_at' => null,
+        ];
+    }
+
+    $logoUrl = $configuration['logo_url'] !== null ? (string) $configuration['logo_url'] : null;
+
+    if ($logoUrl !== null && !localAssetExists($logoUrl, 'assets/branding/')) {
+        $logoUrl = null;
+    }
+
+    return [
+        'id' => (int) $configuration['id'],
+        'nombre_pagina' => trim((string) ($configuration['nombre_pagina'] ?? '')) !== '' ? (string) $configuration['nombre_pagina'] : 'Prycorreos',
+        'logo_url' => $logoUrl,
+        'updated_at' => $configuration['updated_at'] !== null ? (string) $configuration['updated_at'] : null,
+    ];
+}
+
 function uploadServiceLogo(?array $file): ?string
+{
+    return uploadImageAsset($file, 'assets/services', 'service_', 'logo del servicio');
+}
+
+function uploadAdminSiteLogo(?array $file): ?string
+{
+    return uploadImageAsset($file, 'assets/branding', 'branding_', 'logo de la página');
+}
+
+function uploadImageAsset(?array $file, string $relativeDir, string $prefix, string $entityLabel): ?string
 {
     if ($file === null || !isset($file['error'])) {
         return null;
@@ -684,13 +868,13 @@ function uploadServiceLogo(?array $file): ?string
     }
 
     if ((int) $file['error'] !== UPLOAD_ERR_OK) {
-        throw new RuntimeException('No fue posible subir el logo del servicio.');
+        throw new RuntimeException(sprintf('No fue posible subir el %s.', $entityLabel));
     }
 
     $tmpName = (string) ($file['tmp_name'] ?? '');
 
     if ($tmpName === '' || !is_uploaded_file($tmpName)) {
-        throw new RuntimeException('El archivo del logo no es válido.');
+        throw new RuntimeException(sprintf('El archivo del %s no es válido.', $entityLabel));
     }
 
     $allowedMimeTypes = [
@@ -711,21 +895,20 @@ function uploadServiceLogo(?array $file): ?string
     }
 
     if (!is_string($mimeType) || !isset($allowedMimeTypes[$mimeType])) {
-        throw new RuntimeException('El logo debe ser una imagen válida en formato PNG, JPG, WEBP, GIF o SVG.');
+        throw new RuntimeException(sprintf('El %s debe ser una imagen válida en formato PNG, JPG, WEBP, GIF o SVG.', $entityLabel));
     }
 
-    $relativeDir = 'assets/services';
-    $absoluteDir = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'assets' . DIRECTORY_SEPARATOR . 'services';
+    $absoluteDir = dirname(__DIR__) . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $relativeDir);
 
     if (!is_dir($absoluteDir) && !mkdir($absoluteDir, 0777, true) && !is_dir($absoluteDir)) {
-        throw new RuntimeException('No fue posible preparar la carpeta para guardar el logo.');
+        throw new RuntimeException(sprintf('No fue posible preparar la carpeta para guardar el %s.', $entityLabel));
     }
 
-    $fileName = 'service_' . bin2hex(random_bytes(12)) . '.' . $allowedMimeTypes[$mimeType];
+    $fileName = $prefix . bin2hex(random_bytes(12)) . '.' . $allowedMimeTypes[$mimeType];
     $absolutePath = $absoluteDir . DIRECTORY_SEPARATOR . $fileName;
 
     if (!move_uploaded_file($tmpName, $absolutePath)) {
-        throw new RuntimeException('No fue posible guardar el logo del servicio.');
+        throw new RuntimeException(sprintf('No fue posible guardar el %s.', $entityLabel));
     }
 
     return $relativeDir . '/' . $fileName;
@@ -733,7 +916,17 @@ function uploadServiceLogo(?array $file): ?string
 
 function deleteLocalServiceAsset(?string $relativePath): void
 {
-    if ($relativePath === null || $relativePath === '' || strpos($relativePath, 'assets/services/') !== 0) {
+    deleteLocalAsset($relativePath, 'assets/services/');
+}
+
+function deleteLocalAdminBrandAsset(?string $relativePath): void
+{
+    deleteLocalAsset($relativePath, 'assets/branding/');
+}
+
+function deleteLocalAsset(?string $relativePath, string $expectedPrefix): void
+{
+    if ($relativePath === null || $relativePath === '' || strpos($relativePath, $expectedPrefix) !== 0) {
         return;
     }
 
@@ -742,4 +935,14 @@ function deleteLocalServiceAsset(?string $relativePath): void
     if (is_file($absolutePath)) {
         @unlink($absolutePath);
     }
+}
+
+function localAssetExists(?string $relativePath, string $expectedPrefix): bool
+{
+    if ($relativePath === null || $relativePath === '' || strpos($relativePath, $expectedPrefix) !== 0) {
+        return false;
+    }
+
+    $absolutePath = dirname(__DIR__) . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $relativePath);
+    return is_file($absolutePath);
 }
