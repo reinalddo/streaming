@@ -119,6 +119,7 @@ function saveAdminConfiguration(array $input, array $files = []): array
     $email = strtolower(trim((string) ($input['email'] ?? '')));
     $phone = trim((string) ($input['telefono'] ?? ''));
     $pageName = trim((string) ($input['nombre_pagina'] ?? ''));
+    $barColor = normalizeColor((string) ($input['bar_color'] ?? '#0b57d0'));
     $password = (string) ($input['password'] ?? '');
 
     if ($name === '' || $lastName === '' || $username === '' || $email === '' || $pageName === '') {
@@ -172,10 +173,11 @@ function saveAdminConfiguration(array $input, array $files = []): array
 
         $updateAdminStmt->execute($adminParams);
 
-        $saveSettingsStmt = $pdo->prepare('INSERT INTO configuracion_admin (id, nombre_pagina, logo_url) VALUES (1, :nombre_pagina, :logo_url) ON DUPLICATE KEY UPDATE nombre_pagina = VALUES(nombre_pagina), logo_url = VALUES(logo_url)');
+        $saveSettingsStmt = $pdo->prepare('INSERT INTO configuracion_admin (id, nombre_pagina, logo_url, bar_color) VALUES (1, :nombre_pagina, :logo_url, :bar_color) ON DUPLICATE KEY UPDATE nombre_pagina = VALUES(nombre_pagina), logo_url = VALUES(logo_url), bar_color = VALUES(bar_color)');
         $saveSettingsStmt->execute([
             'nombre_pagina' => $pageName,
             'logo_url' => $finalLogoPath,
+            'bar_color' => $barColor,
         ]);
 
         $pdo->commit();
@@ -989,12 +991,18 @@ function ensureAdminConfigurationTable(?PDO $pdo = null): void
             id TINYINT UNSIGNED NOT NULL DEFAULT 1,
             nombre_pagina VARCHAR(160) NOT NULL DEFAULT "Prycorreos",
             logo_url VARCHAR(255) NULL,
+            bar_color VARCHAR(20) NOT NULL DEFAULT "#0b57d0",
             updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             PRIMARY KEY (id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci'
     );
 
-    $pdo->exec("INSERT IGNORE INTO configuracion_admin (id, nombre_pagina, logo_url) VALUES (1, 'Prycorreos', NULL)");
+    $columnStmt = $pdo->query("SHOW COLUMNS FROM configuracion_admin LIKE 'bar_color'");
+    if ($columnStmt->fetch() === false) {
+        $pdo->exec('ALTER TABLE configuracion_admin ADD COLUMN bar_color VARCHAR(20) NOT NULL DEFAULT "#0b57d0" AFTER logo_url');
+    }
+
+    $pdo->exec("INSERT IGNORE INTO configuracion_admin (id, nombre_pagina, logo_url, bar_color) VALUES (1, 'Prycorreos', NULL, '#0b57d0')");
 }
 
 function ensureGallerySlidesTable(?PDO $pdo = null): void
@@ -1071,7 +1079,7 @@ function fetchStoredAdminConfiguration(?PDO $pdo = null): array
 {
     $pdo ??= getPdo();
     ensureAdminConfigurationTable($pdo);
-    $stmt = $pdo->query('SELECT id, nombre_pagina, logo_url, updated_at FROM configuracion_admin WHERE id = 1 LIMIT 1');
+    $stmt = $pdo->query('SELECT id, nombre_pagina, logo_url, bar_color, updated_at FROM configuracion_admin WHERE id = 1 LIMIT 1');
     $configuration = $stmt->fetch();
 
     if ($configuration === false) {
@@ -1079,6 +1087,7 @@ function fetchStoredAdminConfiguration(?PDO $pdo = null): array
             'id' => 1,
             'nombre_pagina' => 'Prycorreos',
             'logo_url' => null,
+            'bar_color' => '#0b57d0',
             'updated_at' => null,
         ];
     }
@@ -1093,6 +1102,7 @@ function fetchStoredAdminConfiguration(?PDO $pdo = null): array
         'id' => (int) $configuration['id'],
         'nombre_pagina' => trim((string) ($configuration['nombre_pagina'] ?? '')) !== '' ? (string) $configuration['nombre_pagina'] : 'Prycorreos',
         'logo_url' => $logoUrl,
+        'bar_color' => normalizeColor((string) ($configuration['bar_color'] ?? '#0b57d0')),
         'updated_at' => $configuration['updated_at'] !== null ? (string) $configuration['updated_at'] : null,
     ];
 }

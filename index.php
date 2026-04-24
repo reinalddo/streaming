@@ -8,6 +8,7 @@ $publicAppSettings = getPublicAppConfiguration();
 $initialGallerySlides = getPublicGallerySlides();
 $initialPageName = trim((string) ($publicAppSettings['nombre_pagina'] ?? '')) !== '' ? (string) $publicAppSettings['nombre_pagina'] : 'Prycorreos';
 $initialFavicon = $publicAppSettings['logo_url'] ?? null;
+$initialBarColor = trim((string) ($publicAppSettings['bar_color'] ?? '')) !== '' ? (string) $publicAppSettings['bar_color'] : '#0b57d0';
 
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Cache-Control: post-check=0, pre-check=0', false);
@@ -33,6 +34,9 @@ header('Expires: 0');
             --pc-text: #18212f;
             --pc-border: #dbe5f2;
             --pc-muted: #64748b;
+            --pc-topbar-rgb: 11, 87, 208;
+            --pc-topbar-opacity: 0.96;
+            --pc-topbar-height: 72px;
         }
 
         body {
@@ -41,6 +45,159 @@ header('Expires: 0');
                 radial-gradient(circle at top left, rgba(11, 87, 208, 0.14), transparent 28%),
                 linear-gradient(180deg, #f8fbff 0%, var(--pc-bg) 100%);
             color: var(--pc-text);
+            padding-top: var(--pc-topbar-height);
+        }
+
+        .topbar-shell {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1080;
+            pointer-events: none;
+        }
+
+        .topbar-shell > * {
+            pointer-events: auto;
+        }
+
+        .app-topbar {
+            width: 100%;
+            min-height: var(--pc-topbar-height);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            padding: 0.6rem 1rem;
+            border: 0;
+            border-radius: 0;
+            background: rgba(var(--pc-topbar-rgb), var(--pc-topbar-opacity));
+            box-shadow: 0 12px 30px rgba(15, 23, 42, 0.16);
+            backdrop-filter: blur(14px);
+            transition: background-color 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+        }
+
+        .topbar-brand {
+            min-width: 0;
+            display: flex;
+            align-items: center;
+            gap: 0.7rem;
+            color: #fff;
+            text-decoration: none;
+        }
+
+        .topbar-brand:hover,
+        .topbar-brand:focus {
+            color: #fff;
+        }
+
+        .topbar-brand-mark {
+            width: 46px;
+            height: 46px;
+            border-radius: 14px;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255, 255, 255, 0.14);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+            flex-shrink: 0;
+        }
+
+        .topbar-brand-mark img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        .topbar-brand-fallback {
+            color: #fff;
+            font-size: 1.15rem;
+            font-weight: 800;
+        }
+
+        .topbar-brand-copy {
+            min-width: 0;
+        }
+
+        .topbar-brand-copy strong {
+            display: block;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .topbar-brand-copy strong {
+            font-size: 1.6rem;
+            line-height: 1.1;
+            letter-spacing: -0.03em;
+            color: #fff;
+        }
+
+        .topbar-actions {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 0.7rem;
+            flex-wrap: wrap;
+        }
+
+        .topbar-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.45rem;
+            min-height: 42px;
+            padding: 0.62rem 0.9rem;
+            border-radius: 999px;
+            border: 1px solid rgba(255, 255, 255, 0.22);
+            background: rgba(255, 255, 255, 0.14);
+            color: #fff;
+            font-weight: 600;
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+        }
+
+        .topbar-chip:hover,
+        .topbar-chip:focus {
+            color: #fff;
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .topbar-chip-light {
+            background: rgba(255, 255, 255, 0.94);
+            border-color: rgba(255, 255, 255, 0.9);
+            color: rgba(var(--pc-topbar-rgb), 1);
+        }
+
+        .topbar-chip-light:hover,
+        .topbar-chip-light:focus {
+            color: rgba(var(--pc-topbar-rgb), 1);
+            background: #fff;
+        }
+
+        .topbar-icon-button {
+            width: 42px;
+            height: 42px;
+            padding: 0;
+            justify-content: center;
+            font-size: 1rem;
+        }
+
+        .topbar-session-group,
+        .topbar-auth-group {
+            display: flex;
+            align-items: center;
+            gap: 0.7rem;
+            flex-wrap: wrap;
+        }
+
+        .topbar-session-group .topbar-chip {
+            max-width: 100%;
+        }
+
+        .topbar-hidden {
+            display: none !important;
         }
 
         .auth-shell,
@@ -935,6 +1092,39 @@ header('Expires: 0');
         }
 
         @media (max-width: 767.98px) {
+            body {
+                padding-top: var(--pc-topbar-height);
+            }
+
+            .app-topbar {
+                padding: 0.55rem 0.75rem;
+                gap: 0.8rem;
+            }
+
+            .topbar-brand {
+                width: 100%;
+            }
+
+            .topbar-brand-copy strong {
+                font-size: 1.22rem;
+            }
+
+            .topbar-actions {
+                width: 100%;
+                justify-content: space-between;
+            }
+
+            .topbar-auth-group,
+            .topbar-session-group {
+                width: 100%;
+                justify-content: flex-end;
+            }
+
+            .topbar-chip {
+                min-height: 40px;
+                padding: 0.58rem 0.82rem;
+            }
+
             .gallery-slide-caption {
                 left: 0.75rem;
                 right: 0.75rem;
@@ -951,6 +1141,38 @@ header('Expires: 0');
     </style>
 </head>
 <body>
+<div class="topbar-shell">
+    <div id="appTopbar" class="app-topbar">
+        <a href="#" id="topbarBrand" class="topbar-brand">
+            <div class="topbar-brand-mark">
+                <img id="topbarLogoImage" src="" alt="Logo de la página" class="topbar-hidden">
+                <span id="topbarLogoFallback" class="topbar-brand-fallback">P</span>
+            </div>
+            <div class="topbar-brand-copy">
+                <strong id="topbarPageName">Prycorreos</strong>
+            </div>
+        </a>
+
+        <div class="topbar-actions">
+            <div id="topbarAuthGroup" class="topbar-auth-group">
+                <button id="topbarLoginButton" class="btn topbar-chip topbar-chip-light" type="button">Login</button>
+                <button id="topbarRegisterButton" class="btn topbar-chip topbar-chip-light" type="button">Registrarse</button>
+            </div>
+
+            <div id="topbarSessionGroup" class="topbar-session-group topbar-hidden">
+                <div id="topbarIdentity" class="topbar-chip"></div>
+                <button id="topbarSettingsButton" class="btn topbar-chip topbar-icon-button" type="button" aria-label="Configuración">
+                    <i class="bi bi-gear-fill"></i>
+                </button>
+                <button id="topbarLogoutButton" class="btn topbar-chip topbar-chip-light" type="button">
+                    <i class="bi bi-box-arrow-right"></i>
+                    <span>Cerrar Sesión</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <main>
     <section id="publicGallerySection" class="public-gallery-shell d-none">
         <div class="public-gallery-container">
@@ -1066,11 +1288,6 @@ header('Expires: 0');
                             <h1 class="h3 mb-2">Consulta tu información por correo</h1>
                             <p class="text-secondary mb-0">Escribe tu correo registrado para revisar los datos y las cuentas que tienes asignadas.</p>
                         </div>
-                        <div class="user-actions">
-                            <button id="openUserProfileButton" class="btn btn-primary" type="button">Cambiar mis datos</button>
-                            <div id="userIdentity" class="admin-identity"></div>
-                            <button id="userLogoutButton" class="btn btn-outline-secondary" type="button">Cerrar sesión</button>
-                        </div>
                     </div>
 
                     <div id="userStatusMessage" class="small text-secondary mb-4"></div>
@@ -1115,10 +1332,6 @@ header('Expires: 0');
                             <p class="text-primary fw-semibold mb-1">Administración</p>
                             <h1 class="h3 mb-2">Panel del administrador</h1>
                             <p class="text-secondary mb-0">Organiza servicios, consulta sus cuentas disponibles, administra usuarios registrados y asigna cuentas activas.</p>
-                        </div>
-                        <div class="d-flex align-items-center gap-2 flex-wrap justify-content-end">
-                            <div id="adminIdentity" class="admin-identity"></div>
-                            <button id="logoutButton" class="btn btn-outline-secondary" type="button">Cerrar sesión</button>
                         </div>
                     </div>
 
@@ -1651,6 +1864,11 @@ header('Expires: 0');
                                         <input class="form-control" type="text" id="adminDataPageName" name="nombre_pagina" placeholder="Prycorreos" required>
                                         <div class="form-text">Este valor se utilizará en el `title` de la página.</div>
                                     </div>
+                                    <div class="col-12 col-md-6 col-xl-4">
+                                        <label class="form-label" for="adminDataBarColor">Color de la barra superior</label>
+                                        <input class="form-control form-control-color" type="color" id="adminDataBarColor" name="bar_color" value="#0b57d0">
+                                        <div class="form-text">Este color se usará en la barra superior fija de toda la aplicación.</div>
+                                    </div>
                                     <div class="col-12 col-xl-4">
                                         <label class="form-label" for="adminDataPageLogo">Logo general de la página</label>
                                         <input class="form-control" type="file" id="adminDataPageLogo" name="logo_pagina" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml">
@@ -2017,9 +2235,22 @@ header('Expires: 0');
     const INITIAL_PUBLIC_APP_SETTINGS = <?= json_encode([
         'nombre_pagina' => $initialPageName,
         'logo_url' => $initialFavicon,
+        'bar_color' => $initialBarColor,
     ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     const INITIAL_PUBLIC_GALLERY_SLIDES = <?= json_encode($initialGallerySlides, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
 
+    const appTopbar = document.getElementById('appTopbar');
+    const topbarBrand = document.getElementById('topbarBrand');
+    const topbarLogoImage = document.getElementById('topbarLogoImage');
+    const topbarLogoFallback = document.getElementById('topbarLogoFallback');
+    const topbarPageName = document.getElementById('topbarPageName');
+    const topbarAuthGroup = document.getElementById('topbarAuthGroup');
+    const topbarSessionGroup = document.getElementById('topbarSessionGroup');
+    const topbarIdentity = document.getElementById('topbarIdentity');
+    const topbarSettingsButton = document.getElementById('topbarSettingsButton');
+    const topbarLogoutButton = document.getElementById('topbarLogoutButton');
+    const topbarLoginButton = document.getElementById('topbarLoginButton');
+    const topbarRegisterButton = document.getElementById('topbarRegisterButton');
     const publicGallerySection = document.getElementById('publicGallerySection');
     const publicGalleryCarouselElement = document.getElementById('publicGalleryCarousel');
     const publicGalleryIndicators = document.getElementById('publicGalleryIndicators');
@@ -2032,8 +2263,6 @@ header('Expires: 0');
     const statusMessage = document.getElementById('statusMessage');
     const userStatusMessage = document.getElementById('userStatusMessage');
     const adminStatusMessage = document.getElementById('adminStatusMessage');
-    const userIdentity = document.getElementById('userIdentity');
-    const adminIdentity = document.getElementById('adminIdentity');
     const loginForm = document.getElementById('loginForm');
     const registerForm = document.getElementById('registerForm');
     const userSearchForm = document.getElementById('userSearchForm');
@@ -2042,9 +2271,6 @@ header('Expires: 0');
     const userSearchHelp = document.getElementById('userSearchHelp');
     const userSearchButton = document.getElementById('userSearchButton');
     const userSearchResults = document.getElementById('userSearchResults');
-    const openUserProfileButton = document.getElementById('openUserProfileButton');
-    const userLogoutButton = document.getElementById('userLogoutButton');
-    const logoutButton = document.getElementById('logoutButton');
 
     const serviceForm = document.getElementById('serviceForm');
     const serviceFormHeading = document.getElementById('serviceFormHeading');
@@ -2131,6 +2357,7 @@ header('Expires: 0');
     const adminDataPhone = document.getElementById('adminDataPhone');
     const adminDataPassword = document.getElementById('adminDataPassword');
     const adminDataPageName = document.getElementById('adminDataPageName');
+    const adminDataBarColor = document.getElementById('adminDataBarColor');
     const adminDataPageLogo = document.getElementById('adminDataPageLogo');
     const currentAdminLogoWrapper = document.getElementById('currentAdminLogoWrapper');
     const currentAdminLogoImage = document.getElementById('currentAdminLogoImage');
@@ -2462,10 +2689,69 @@ header('Expires: 0');
         return getGallerySlides().find((slide) => Number(slide.id) === Number(slideId)) || null;
     }
 
+    function hexToRgbString(hexColor) {
+        const normalized = String(hexColor || '').trim();
+        const match = normalized.match(/^#?([0-9a-f]{6})$/i);
+
+        if (!match) {
+            return '11, 87, 208';
+        }
+
+        const hex = match[1];
+        return `${parseInt(hex.slice(0, 2), 16)}, ${parseInt(hex.slice(2, 4), 16)}, ${parseInt(hex.slice(4, 6), 16)}`;
+    }
+
     function buildPageTitle(sectionLabel = 'Acceso') {
         const settings = getAdminSettings();
         const pageName = String(settings?.nombre_pagina || INITIAL_PUBLIC_APP_SETTINGS.nombre_pagina || 'Prycorreos').trim() || 'Prycorreos';
         return sectionLabel ? `${pageName} | ${sectionLabel}` : pageName;
+    }
+
+    function updateTopbarScrollState() {
+        const scrollY = Math.max(0, window.scrollY || window.pageYOffset || 0);
+        const progress = Math.min(scrollY / 260, 1);
+        const nextOpacity = 0.96 - (progress * 0.46);
+        document.documentElement.style.setProperty('--pc-topbar-opacity', String(Math.max(0.5, Number(nextOpacity.toFixed(3)))));
+    }
+
+    function renderTopbarBranding() {
+        const settings = getAdminSettings();
+        const pageName = String(settings?.nombre_pagina || INITIAL_PUBLIC_APP_SETTINGS.nombre_pagina || 'Prycorreos').trim() || 'Prycorreos';
+        const logoUrl = settings?.logo_url || '';
+        const barColor = String(settings?.bar_color || INITIAL_PUBLIC_APP_SETTINGS.bar_color || '#0b57d0');
+
+        topbarPageName.textContent = pageName;
+        topbarLogoFallback.textContent = pageName.slice(0, 1).toUpperCase() || 'P';
+        document.documentElement.style.setProperty('--pc-topbar-rgb', hexToRgbString(barColor));
+        updateTopbarScrollState();
+
+        if (logoUrl) {
+            topbarLogoImage.src = logoUrl;
+            topbarLogoImage.classList.remove('topbar-hidden');
+            topbarLogoFallback.classList.add('topbar-hidden');
+        } else {
+            topbarLogoImage.src = '';
+            topbarLogoImage.classList.add('topbar-hidden');
+            topbarLogoFallback.classList.remove('topbar-hidden');
+        }
+    }
+
+    function renderTopbarActions() {
+        const user = appState.user;
+        const isAuthenticated = Boolean(user && user.role);
+        const isAdmin = user?.role === 'admin';
+
+        topbarAuthGroup.classList.toggle('topbar-hidden', isAuthenticated);
+        topbarSessionGroup.classList.toggle('topbar-hidden', !isAuthenticated);
+
+        if (!isAuthenticated) {
+            topbarIdentity.textContent = '';
+            topbarSettingsButton.setAttribute('aria-label', 'Configuración');
+            return;
+        }
+
+        topbarIdentity.textContent = `${user.nombre || ''} ${user.apellido || ''} · ${user.username || ''}`.trim();
+        topbarSettingsButton.setAttribute('aria-label', isAdmin ? 'Ir a Datos Admin' : 'Cambiar Mis Datos');
     }
 
     function applyPublicAppBranding(sectionLabel = 'Acceso') {
@@ -2475,6 +2761,66 @@ header('Expires: 0');
         if (appFavicon) {
             appFavicon.href = settings?.logo_url || 'data:,';
         }
+
+        renderTopbarBranding();
+        renderTopbarActions();
+    }
+
+    function getTopbarHeight() {
+        const topbarHeight = Number.parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--pc-topbar-height'));
+
+        return Number.isFinite(topbarHeight) ? topbarHeight : 72;
+    }
+
+    function scrollViewportToElement(element, extraOffset = 0) {
+        if (!element) {
+            return;
+        }
+
+        const targetTop = window.scrollY + element.getBoundingClientRect().top - getTopbarHeight() - extraOffset;
+        window.scrollTo({
+            top: Math.max(0, targetTop),
+            behavior: 'smooth',
+        });
+    }
+
+    function navigateToCurrentSessionHome() {
+        if (appState.user?.role === 'admin') {
+            scrollViewportToElement(adminView, 8);
+            return;
+        }
+
+        if (appState.user?.role === 'usuario') {
+            scrollViewportToElement(userView, 8);
+            return;
+        }
+
+        scrollViewportToElement(authView, 8);
+    }
+
+    function openAuthPane(targetPane) {
+        const tabButton = document.getElementById(targetPane === 'register' ? 'register-tab' : 'login-tab');
+
+        if (!tabButton) {
+            return;
+        }
+
+        bootstrap.Tab.getOrCreateInstance(tabButton).show();
+        authView.classList.remove('d-none');
+        userView.classList.add('d-none');
+        adminView.classList.add('d-none');
+        scrollViewportToElement(authView, 8);
+    }
+
+    function openAdminDataPane() {
+        const adminDataTab = document.getElementById('admin-data-tab');
+
+        if (!adminDataTab) {
+            return;
+        }
+
+        bootstrap.Tab.getOrCreateInstance(adminDataTab).show();
+        scrollViewportToElement(adminDataTab, 14);
     }
 
     function getServiceById(serviceId) {
@@ -2993,6 +3339,7 @@ header('Expires: 0');
         adminDataPhone.value = profile.telefono || '';
         adminDataPassword.value = '';
         adminDataPageName.value = settings?.nombre_pagina || INITIAL_PUBLIC_APP_SETTINGS.nombre_pagina || 'Prycorreos';
+        adminDataBarColor.value = settings?.bar_color || INITIAL_PUBLIC_APP_SETTINGS.bar_color || '#0b57d0';
         adminDataPageLogo.value = '';
 
         if (settings?.logo_url) {
@@ -3017,7 +3364,6 @@ header('Expires: 0');
             ...(result.user || {}),
             role: 'usuario',
         };
-        userIdentity.textContent = `${appState.user.nombre} ${appState.user.apellido} · ${appState.user.username}`;
         userSearchEmail.value = '';
         userSearchEmail.placeholder = 'Escriba el correo a consultar';
             userSearchEmail.placeholder = 'Correo a Consultar';
@@ -3027,9 +3373,9 @@ header('Expires: 0');
             : 'Aún no tienes cuentas asignadas. Cuando tengas una, aparecerá aquí para consultarla.';
         userSearchEmail.disabled = result.assignments.length === 0 || appState.userSearchPending;
         userSearchButton.disabled = result.assignments.length === 0 || appState.userSearchPending;
-        openUserProfileButton.disabled = false;
         hideUserSearchOptions();
         populateUserProfileForm();
+        renderTopbarActions();
 
         if (result.assignments.length === 0) {
             renderUserModuleEmptyState('Todavía no tienes cuentas asignadas para consultar.');
@@ -3200,7 +3546,6 @@ header('Expires: 0');
     async function enterUserMode(user, { animate = false } = {}) {
         appState.user = user;
         adminView.classList.add('d-none');
-        userIdentity.textContent = `${user.nombre} ${user.apellido} · ${user.username}`;
         applyPublicAppBranding('Usuario');
         userSearchEmail.value = '';
         userSearchEmail.placeholder = 'Escriba el correo a consultar';
@@ -3222,7 +3567,6 @@ header('Expires: 0');
         authView.classList.add('d-none');
         userView.classList.add('d-none');
         adminView.classList.remove('d-none');
-        adminIdentity.textContent = `${user.nombre} ${user.apellido} · ${user.username}`;
         applyPublicAppBranding('Administración');
     }
 
@@ -4417,7 +4761,6 @@ header('Expires: 0');
             };
             appState.overview.admin_profile = result.admin_profile || null;
             appState.overview.admin_settings = result.admin_settings || INITIAL_PUBLIC_APP_SETTINGS;
-            adminIdentity.textContent = `${appState.user.nombre} ${appState.user.apellido} · ${appState.user.username}`;
             renderAdminDataConfiguration();
             applyPublicAppBranding('Administración');
             showAdminStatus(result.message, 'success');
@@ -4436,11 +4779,6 @@ header('Expires: 0');
         hideUserSearchOptions();
     });
 
-    openUserProfileButton.addEventListener('click', () => {
-        populateUserProfileForm();
-        userProfileModal.show();
-    });
-
     saveUserProfileButton.addEventListener('click', async () => {
         showUserStatus('Guardando tus datos...', 'secondary');
 
@@ -4457,7 +4795,6 @@ header('Expires: 0');
             };
             appState.userModule.profile = result.user || null;
             appState.userModule.assignments = normalizeArray(result.assignments);
-            userIdentity.textContent = `${appState.user.nombre} ${appState.user.apellido} · ${appState.user.username}`;
             userProfileModal.hide();
             userSearchEmail.value = '';
             hideUserSearchOptions();
@@ -4469,9 +4806,35 @@ header('Expires: 0');
                 : 'Aún no tienes cuentas asignadas. Cuando tengas una, aparecerá aquí para consultarla.';
             userSearchEmail.disabled = appState.userModule.assignments.length === 0;
             userSearchButton.disabled = appState.userModule.assignments.length === 0;
+            renderTopbarActions();
             showUserStatus(result.message, 'success');
         } catch (error) {
             showUserStatus(error.message, 'danger');
+        }
+    });
+
+    topbarBrand.addEventListener('click', (event) => {
+        event.preventDefault();
+        navigateToCurrentSessionHome();
+    });
+
+    topbarLoginButton.addEventListener('click', () => {
+        openAuthPane('login');
+    });
+
+    topbarRegisterButton.addEventListener('click', () => {
+        openAuthPane('register');
+    });
+
+    topbarSettingsButton.addEventListener('click', () => {
+        if (appState.user?.role === 'admin') {
+            openAdminDataPane();
+            return;
+        }
+
+        if (appState.user?.role === 'usuario') {
+            populateUserProfileForm();
+            userProfileModal.show();
         }
     });
 
@@ -5418,27 +5781,24 @@ header('Expires: 0');
         }
     });
 
-    logoutButton.addEventListener('click', async () => {
+    topbarLogoutButton.addEventListener('click', async () => {
         try {
             userSearchLoadingModal.hide();
             resetUserSearchUiState();
             await requestJson('./api/logout.php', { method: 'POST' });
             redirectToLoggedOutState();
         } catch (error) {
-            showAdminStatus(error.message, 'danger');
+            if (appState.user?.role === 'admin') {
+                showAdminStatus(error.message, 'danger');
+            } else {
+                showUserStatus(error.message, 'danger');
+            }
         }
     });
 
-    userLogoutButton.addEventListener('click', async () => {
-        try {
-            userSearchLoadingModal.hide();
-            resetUserSearchUiState();
-            await requestJson('./api/logout.php', { method: 'POST' });
-            redirectToLoggedOutState();
-        } catch (error) {
-            showUserStatus(error.message, 'danger');
-        }
-    });
+    window.addEventListener('scroll', () => {
+        updateTopbarScrollState();
+    }, { passive: true });
 
     const responsiveTableObserver = new MutationObserver(() => {
         scheduleResponsiveTableSync();
