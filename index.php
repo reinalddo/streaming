@@ -5,6 +5,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/includes/admin.php';
 
 $publicAppSettings = getPublicAppConfiguration();
+$initialGallerySlides = getPublicGallerySlides();
 $initialPageName = trim((string) ($publicAppSettings['nombre_pagina'] ?? '')) !== '' ? (string) $publicAppSettings['nombre_pagina'] : 'Prycorreos';
 $initialFavicon = $publicAppSettings['logo_url'] ?? null;
 
@@ -47,6 +48,125 @@ header('Expires: 0');
         .admin-shell {
             width: 100%;
             padding: 1.25rem;
+        }
+
+        .public-gallery-shell {
+            width: 100%;
+            padding: 1.25rem 1.25rem 0;
+        }
+
+        .public-gallery-container {
+            width: 100%;
+            max-width: 1280px;
+            margin: 0 auto;
+        }
+
+        .gallery-surface {
+            border: 0;
+            border-radius: 1.6rem;
+            overflow: hidden;
+            background: rgba(255, 255, 255, 0.94);
+            box-shadow: 0 22px 50px rgba(24, 33, 47, 0.12);
+        }
+
+        .global-gallery-carousel,
+        .global-gallery-carousel .carousel-inner,
+        .global-gallery-carousel .carousel-item {
+            border-radius: 1.6rem;
+        }
+
+        .global-gallery-carousel.carousel-fade .carousel-item {
+            transition: opacity 0.9s ease-in-out;
+        }
+
+        .gallery-slide-link,
+        .gallery-slide-static {
+            display: block;
+            position: relative;
+            text-decoration: none;
+            color: inherit;
+        }
+
+        .gallery-slide-media {
+            position: relative;
+            aspect-ratio: 1280 / 300;
+            min-height: 160px;
+            max-height: 300px;
+            background: linear-gradient(135deg, rgba(11, 87, 208, 0.18), rgba(9, 59, 143, 0.08));
+        }
+
+        .gallery-slide-media img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        .gallery-slide-caption {
+            position: absolute;
+            left: 1rem;
+            bottom: 1rem;
+            max-width: min(68%, 42rem);
+            padding: 0.7rem 0.95rem;
+            border: 1px solid rgba(255, 255, 255, 0.35);
+            border-radius: 1rem;
+            background: linear-gradient(180deg, rgba(24, 33, 47, 0.2), rgba(24, 33, 47, 0.74));
+            color: #fff;
+            box-shadow: 0 14px 26px rgba(0, 0, 0, 0.22);
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.65);
+            backdrop-filter: blur(4px);
+        }
+
+        .gallery-slide-caption strong {
+            display: block;
+            font-size: clamp(0.95rem, 1.7vw, 1.2rem);
+            line-height: 1.35;
+        }
+
+        .global-gallery-carousel .carousel-indicators {
+            margin-bottom: 0.5rem;
+        }
+
+        .global-gallery-carousel .carousel-indicators [data-bs-target] {
+            width: 34px;
+            height: 6px;
+            border-radius: 999px;
+            margin-inline: 4px;
+        }
+
+        .global-gallery-carousel .carousel-control-prev,
+        .global-gallery-carousel .carousel-control-next {
+            width: 8%;
+        }
+
+        .global-gallery-carousel .carousel-control-prev-icon,
+        .global-gallery-carousel .carousel-control-next-icon {
+            width: 2.4rem;
+            height: 2.4rem;
+            border-radius: 50%;
+            background-color: rgba(24, 33, 47, 0.46);
+            background-size: 46% 46%;
+        }
+
+        .gallery-thumb {
+            width: 140px;
+            min-width: 140px;
+            aspect-ratio: 1280 / 300;
+            border-radius: 0.85rem;
+            overflow: hidden;
+            border: 1px solid var(--pc-border);
+            background: #fff;
+        }
+
+        .gallery-thumb img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        .gallery-link-cell {
+            word-break: break-word;
         }
 
         .auth-shell,
@@ -752,6 +872,10 @@ header('Expires: 0');
         }
 
         @media (min-width: 992px) {
+            .public-gallery-shell {
+                padding: 2rem 2rem 0;
+            }
+
             .auth-shell,
             .user-shell,
             .admin-shell {
@@ -809,10 +933,44 @@ header('Expires: 0');
                 min-height: 680px;
             }
         }
+
+        @media (max-width: 767.98px) {
+            .gallery-slide-caption {
+                left: 0.75rem;
+                right: 0.75rem;
+                bottom: 0.75rem;
+                max-width: none;
+                padding: 0.65rem 0.85rem;
+            }
+
+            .gallery-thumb {
+                width: 100%;
+                min-width: 0;
+            }
+        }
     </style>
 </head>
 <body>
 <main>
+    <section id="publicGallerySection" class="public-gallery-shell d-none">
+        <div class="public-gallery-container">
+            <section class="gallery-surface">
+                <div id="publicGalleryCarousel" class="carousel slide carousel-fade global-gallery-carousel" data-bs-ride="carousel" data-bs-interval="10000" data-bs-wrap="true">
+                    <div id="publicGalleryIndicators" class="carousel-indicators"></div>
+                    <div id="publicGalleryInner" class="carousel-inner"></div>
+                    <button id="publicGalleryPrev" class="carousel-control-prev" type="button" data-bs-target="#publicGalleryCarousel" data-bs-slide="prev">
+                        <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                        <span class="visually-hidden">Anterior</span>
+                    </button>
+                    <button id="publicGalleryNext" class="carousel-control-next" type="button" data-bs-target="#publicGalleryCarousel" data-bs-slide="next">
+                        <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                        <span class="visually-hidden">Siguiente</span>
+                    </button>
+                </div>
+            </section>
+        </div>
+    </section>
+
     <section id="authView" class="auth-shell d-flex align-items-center justify-content-center">
         <div class="container auth-container">
             <section class="card surface-card auth-card-login">
@@ -975,6 +1133,9 @@ header('Expires: 0');
                         </li>
                         <li class="nav-item" role="presentation">
                             <button class="nav-link" id="assignments-tab" data-bs-toggle="pill" data-bs-target="#assignments-pane" type="button" role="tab" aria-controls="assignments-pane" aria-selected="false">Asignar Cuentas</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="gallery-tab" data-bs-toggle="pill" data-bs-target="#gallery-pane" type="button" role="tab" aria-controls="gallery-pane" aria-selected="false">Galería</button>
                         </li>
                         <li class="nav-item" role="presentation">
                             <button class="nav-link" id="mail-config-tab" data-bs-toggle="pill" data-bs-target="#mail-config-pane" type="button" role="tab" aria-controls="mail-config-pane" aria-selected="false">Configuración Correo</button>
@@ -1305,6 +1466,95 @@ header('Expires: 0');
                                             <tbody id="serviceAssignmentsTableBody"></tbody>
                                         </table>
                                     </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="tab-pane fade" id="gallery-pane" role="tabpanel" aria-labelledby="gallery-tab" tabindex="0">
+                            <div class="dashboard-block">
+                                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+                                    <div>
+                                        <h2 class="section-title mb-0">Galería</h2>
+                                        <p class="section-subtitle mb-0">Publica banners globales para todo el sistema. Recomendado: imágenes de 1280 x 300 px.</p>
+                                    </div>
+                                    <span id="gallerySlideCountBadge" class="badge text-bg-secondary rounded-pill"></span>
+                                </div>
+
+                                <form id="galleryForm" class="row g-3 mb-4" novalidate enctype="multipart/form-data">
+                                    <input type="hidden" id="galleryFormAction" name="action" value="create">
+                                    <input type="hidden" id="galleryFormSlideId" name="slide_id" value="">
+                                    <div class="col-12 col-xl-4">
+                                        <label class="form-label" for="galleryImage">Imagen</label>
+                                        <input class="form-control" type="file" id="galleryImage" name="imagen" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml">
+                                        <div class="form-text">Obligatoria al crear. Recomendado: 1280 x 300 px. Se guardará en `assets/galeria`.</div>
+                                    </div>
+                                    <div class="col-12 col-xl-4">
+                                        <label class="form-label" for="galleryText">Texto</label>
+                                        <input class="form-control" type="text" id="galleryText" name="texto" maxlength="255" placeholder="Texto descriptivo opcional para el banner">
+                                    </div>
+                                    <div class="col-12 col-xl-4">
+                                        <label class="form-label" for="galleryLink">Enlace</label>
+                                        <input class="form-control" type="text" id="galleryLink" name="enlace" placeholder="https://tu-dominio.com/oferta o /ruta/interna">
+                                    </div>
+                                    <div class="col-12 col-md-6 col-xl-4">
+                                        <label class="form-label" for="galleryLinkTarget">Abrir enlace</label>
+                                        <select class="form-select" id="galleryLinkTarget" name="link_target">
+                                            <option value="blank" selected>En otra pestaña</option>
+                                            <option value="self">En la misma pestaña</option>
+                                        </select>
+                                    </div>
+                                    <div id="currentGalleryImageWrapper" class="col-12 d-none">
+                                        <div class="admin-branding-preview">
+                                            <div class="gallery-thumb">
+                                                <img id="currentGalleryImage" src="" alt="Imagen actual del slide">
+                                            </div>
+                                            <div class="admin-branding-preview-copy">
+                                                <div class="fw-semibold">Vista previa del slide</div>
+                                                <div id="currentGalleryImageLabel" class="small text-secondary">Banner actual de la galería.</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-12 d-grid d-lg-flex justify-content-lg-end gap-2">
+                                        <button id="cancelGalleryEditButton" class="btn btn-outline-secondary d-none" type="button">Cancelar</button>
+                                        <button id="gallerySubmitButton" class="btn btn-primary" type="submit">Guardar Slide de Galería</button>
+                                    </div>
+                                </form>
+
+                                <div class="table-toolbar mb-3">
+                                    <div class="d-flex gap-2 flex-wrap align-items-center">
+                                        <input class="form-control" type="search" id="gallerySearchInput" placeholder="Buscar por texto, enlace o tipo de apertura">
+                                    </div>
+                                    <div class="d-flex gap-2 align-items-center flex-wrap">
+                                        <label class="small text-secondary" for="galleryPageSize">Filas por página</label>
+                                        <select class="form-select" id="galleryPageSize">
+                                            <option value="5" selected>5</option>
+                                            <option value="10">10</option>
+                                            <option value="20">20</option>
+                                            <option value="50">50</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div class="data-table-wrapper">
+                                    <div class="table-responsive">
+                                        <table class="table table-hover align-middle mb-0">
+                                            <thead>
+                                                <tr>
+                                                    <th>Orden</th>
+                                                    <th>Imagen</th>
+                                                    <th>Texto</th>
+                                                    <th>Enlace</th>
+                                                    <th>Apertura</th>
+                                                    <th>Acciones</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="galleryTableBody"></tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                                <div class="pagination-strip mt-3">
+                                    <div id="gallerySummary" class="small text-secondary">No hay resultados para los filtros actuales.</div>
+                                    <div id="galleryPagination" class="table-action-group"></div>
                                 </div>
                             </div>
                         </div>
@@ -1768,7 +2018,14 @@ header('Expires: 0');
         'nombre_pagina' => $initialPageName,
         'logo_url' => $initialFavicon,
     ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+    const INITIAL_PUBLIC_GALLERY_SLIDES = <?= json_encode($initialGallerySlides, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
 
+    const publicGallerySection = document.getElementById('publicGallerySection');
+    const publicGalleryCarouselElement = document.getElementById('publicGalleryCarousel');
+    const publicGalleryIndicators = document.getElementById('publicGalleryIndicators');
+    const publicGalleryInner = document.getElementById('publicGalleryInner');
+    const publicGalleryPrev = document.getElementById('publicGalleryPrev');
+    const publicGalleryNext = document.getElementById('publicGalleryNext');
     const authView = document.getElementById('authView');
     const userView = document.getElementById('userView');
     const adminView = document.getElementById('adminView');
@@ -1848,6 +2105,24 @@ header('Expires: 0');
     const mailConfigMaxMessages = document.getElementById('mailConfigMaxMessages');
     const mailConfigDelayBadge = document.getElementById('mailConfigDelayBadge');
     const mailConfigSubmitButton = document.getElementById('mailConfigSubmitButton');
+    const galleryForm = document.getElementById('galleryForm');
+    const galleryFormAction = document.getElementById('galleryFormAction');
+    const galleryFormSlideId = document.getElementById('galleryFormSlideId');
+    const galleryImage = document.getElementById('galleryImage');
+    const galleryText = document.getElementById('galleryText');
+    const galleryLink = document.getElementById('galleryLink');
+    const galleryLinkTarget = document.getElementById('galleryLinkTarget');
+    const currentGalleryImageWrapper = document.getElementById('currentGalleryImageWrapper');
+    const currentGalleryImage = document.getElementById('currentGalleryImage');
+    const currentGalleryImageLabel = document.getElementById('currentGalleryImageLabel');
+    const cancelGalleryEditButton = document.getElementById('cancelGalleryEditButton');
+    const gallerySubmitButton = document.getElementById('gallerySubmitButton');
+    const gallerySlideCountBadge = document.getElementById('gallerySlideCountBadge');
+    const galleryTableBody = document.getElementById('galleryTableBody');
+    const gallerySearchInput = document.getElementById('gallerySearchInput');
+    const galleryPageSize = document.getElementById('galleryPageSize');
+    const gallerySummary = document.getElementById('gallerySummary');
+    const galleryPagination = document.getElementById('galleryPagination');
     const adminDataForm = document.getElementById('adminDataForm');
     const adminDataNombre = document.getElementById('adminDataNombre');
     const adminDataApellido = document.getElementById('adminDataApellido');
@@ -1947,9 +2222,16 @@ header('Expires: 0');
     const userProfileModal = new bootstrap.Modal(userProfileModalElement);
 
     const passwordToggleButtons = document.querySelectorAll('[data-password-target]');
+    const publicGalleryCarousel = publicGalleryCarouselElement ? new bootstrap.Carousel(publicGalleryCarouselElement, {
+        interval: 10000,
+        ride: false,
+        pause: false,
+        wrap: true,
+    }) : null;
 
     const appState = {
         user: null,
+        publicGallerySlides: normalizeArray(INITIAL_PUBLIC_GALLERY_SLIDES),
         userModule: {
             profile: null,
             assignments: [],
@@ -1974,6 +2256,7 @@ header('Expires: 0');
             services: [],
             accounts: [],
             users: [],
+            gallery_slides: null,
             admin_profile: null,
             admin_settings: null,
             mail_configuration: null,
@@ -2155,6 +2438,14 @@ header('Expires: 0');
         return normalizeArray(appState.overview.users);
     }
 
+    function getGallerySlides() {
+        if (appState.overview.gallery_slides !== null) {
+            return normalizeArray(appState.overview.gallery_slides);
+        }
+
+        return normalizeArray(appState.publicGallerySlides);
+    }
+
     function getMailConfiguration() {
         return appState.overview.mail_configuration || null;
     }
@@ -2165,6 +2456,10 @@ header('Expires: 0');
 
     function getAdminSettings() {
         return appState.overview.admin_settings || INITIAL_PUBLIC_APP_SETTINGS;
+    }
+
+    function getGallerySlideById(slideId) {
+        return getGallerySlides().find((slide) => Number(slide.id) === Number(slideId)) || null;
     }
 
     function buildPageTitle(sectionLabel = 'Acceso') {
@@ -2241,6 +2536,18 @@ header('Expires: 0');
         }
 
         return appState.listTableState[key];
+    }
+
+    function getGalleryTableState() {
+        if (!appState.listTableState.gallerySlides) {
+            appState.listTableState.gallerySlides = {
+                query: '',
+                page: 1,
+                pageSize: 5,
+            };
+        }
+
+        return appState.listTableState.gallerySlides;
     }
 
     function getPaginatedRows(rows, state) {
@@ -2524,6 +2831,151 @@ header('Expires: 0');
         mailConfigDelayMinutes.value = delayMinutes;
         mailConfigMaxMessages.value = maxMessages;
         mailConfigDelayBadge.textContent = formatMailDelayLabel(delayDays, delayMinutes);
+    }
+
+    function resetGalleryForm() {
+        if (!galleryForm) {
+            return;
+        }
+
+        galleryForm.reset();
+        galleryFormAction.value = 'create';
+        galleryFormSlideId.value = '';
+        galleryLinkTarget.value = 'blank';
+        gallerySubmitButton.textContent = 'Guardar Slide de Galería';
+        cancelGalleryEditButton.classList.add('d-none');
+        currentGalleryImageWrapper.classList.add('d-none');
+        currentGalleryImage.src = '';
+        currentGalleryImageLabel.textContent = 'Banner actual de la galería.';
+    }
+
+    function populateGalleryForm(slideId) {
+        const slide = getGallerySlideById(slideId);
+
+        if (!slide) {
+            return;
+        }
+
+        galleryFormAction.value = 'update';
+        galleryFormSlideId.value = String(slide.id);
+        galleryImage.value = '';
+        galleryText.value = slide.texto || '';
+        galleryLink.value = slide.enlace || '';
+        galleryLinkTarget.value = slide.open_in_new_tab ? 'blank' : 'self';
+        gallerySubmitButton.textContent = 'Actualizar Slide de Galería';
+        cancelGalleryEditButton.classList.remove('d-none');
+        currentGalleryImage.src = slide.image_url;
+        currentGalleryImageLabel.textContent = slide.texto || 'Banner actual de la galería.';
+        currentGalleryImageWrapper.classList.remove('d-none');
+        galleryForm.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    function renderGlobalGallery() {
+        if (!publicGallerySection || !publicGalleryIndicators || !publicGalleryInner) {
+            return;
+        }
+
+        const slides = getGallerySlides().filter((slide) => slide && slide.image_url);
+
+        if (slides.length === 0) {
+            publicGallerySection.classList.add('d-none');
+            publicGalleryIndicators.innerHTML = '';
+            publicGalleryInner.innerHTML = '';
+            return;
+        }
+
+        publicGallerySection.classList.remove('d-none');
+        publicGalleryIndicators.innerHTML = slides.length > 1
+            ? slides.map((slide, index) => `
+                <button type="button" data-bs-target="#publicGalleryCarousel" data-bs-slide-to="${index}" class="${index === 0 ? 'active' : ''}" ${index === 0 ? 'aria-current="true"' : ''} aria-label="Slide ${index + 1}"></button>
+            `).join('')
+            : '';
+
+        publicGalleryInner.innerHTML = slides.map((slide, index) => {
+            const captionMarkup = slide.texto
+                ? `<div class="gallery-slide-caption"><strong>${escapeHtml(slide.texto)}</strong></div>`
+                : '';
+            const mediaMarkup = `
+                <div class="gallery-slide-media">
+                    <img src="${escapeHtml(slide.image_url)}" alt="${escapeHtml(slide.texto || `Slide ${index + 1}`)}">
+                    ${captionMarkup}
+                </div>
+            `;
+            const linkMarkup = slide.enlace
+                ? `<a class="gallery-slide-link" href="${escapeHtml(slide.enlace)}" ${slide.open_in_new_tab ? 'target="_blank" rel="noopener noreferrer"' : ''}>${mediaMarkup}</a>`
+                : `<div class="gallery-slide-static">${mediaMarkup}</div>`;
+
+            return `<div class="carousel-item ${index === 0 ? 'active' : ''}">${linkMarkup}</div>`;
+        }).join('');
+
+        const multipleSlides = slides.length > 1;
+        publicGalleryPrev.classList.toggle('d-none', !multipleSlides);
+        publicGalleryNext.classList.toggle('d-none', !multipleSlides);
+
+        if (publicGalleryCarousel) {
+            publicGalleryCarousel.to(0);
+            if (multipleSlides) {
+                publicGalleryCarousel.cycle();
+            } else {
+                publicGalleryCarousel.pause();
+            }
+        }
+    }
+
+    function renderGalleryAdminTable() {
+        if (!galleryTableBody) {
+            return;
+        }
+
+        const slides = getGallerySlides();
+        const state = getGalleryTableState();
+        const normalizedQuery = state.query.trim().toLowerCase();
+        const filteredSlides = slides.filter((slide) => {
+            const haystack = [
+                slide.texto || '',
+                slide.enlace || '',
+                slide.open_in_new_tab ? 'otra pestaña nueva' : 'misma pestaña actual',
+            ].join(' ').toLowerCase();
+
+            return haystack.includes(normalizedQuery);
+        });
+        const { paginatedRows, summary, totalPages } = getPaginatedRows(filteredSlides, state);
+
+        gallerySlideCountBadge.textContent = `${slides.length} slide(s)`;
+        gallerySearchInput.value = state.query;
+        galleryPageSize.value = String(state.pageSize);
+        gallerySummary.textContent = summary;
+        renderPaginationControls(galleryPagination, state.page, totalPages);
+
+        if (filteredSlides.length === 0) {
+            galleryTableBody.innerHTML = `<tr><td colspan="6"><div class="empty-state">${slides.length === 0 ? 'Aún no hay slides registrados en la galería.' : 'No hay slides que coincidan con los filtros actuales.'}</div></td></tr>`;
+            return;
+        }
+
+        galleryTableBody.innerHTML = paginatedRows.map((slide) => `
+            <tr>
+                <td>
+                    <div class="d-flex gap-2 align-items-center flex-wrap">
+                        <input class="form-control form-control-sm" type="number" min="1" step="1" value="${escapeHtml(String(slide.sort_order || 1))}" data-gallery-sort-order-input="${slide.id}" style="max-width: 88px;">
+                        <button class="btn btn-sm btn-outline-primary" type="button" data-save-gallery-sort-order="${slide.id}">Guardar</button>
+                    </div>
+                </td>
+                <td>
+                    <div class="gallery-thumb">
+                        <img src="${escapeHtml(slide.image_url)}" alt="${escapeHtml(slide.texto || 'Slide de galería')}">
+                    </div>
+                </td>
+                <td>${escapeHtml(slide.texto || 'Sin texto')}</td>
+                <td class="gallery-link-cell">${slide.enlace ? escapeHtml(slide.enlace) : 'Sin enlace'}</td>
+                <td>${slide.enlace ? (slide.open_in_new_tab ? 'Otra pestaña' : 'Misma pestaña') : 'Sin enlace'}</td>
+                <td>
+                    <div class="d-flex gap-2 flex-wrap">
+                        <button class="btn btn-sm btn-outline-secondary" type="button" data-edit-gallery-slide="${slide.id}">Editar</button>
+                        <button class="btn btn-sm btn-outline-danger" type="button" data-delete-gallery-slide="${slide.id}">Eliminar</button>
+                    </div>
+                </td>
+            </tr>
+        `).join('');
     }
 
     function renderAdminDataConfiguration() {
@@ -3676,9 +4128,11 @@ header('Expires: 0');
     }
 
     function renderOverview() {
+        renderGlobalGallery();
         renderServices();
         renderRegisteredUsersTable();
         renderServiceAssignmentTable();
+        renderGalleryAdminTable();
         renderMailConfiguration();
         renderAdminDataConfiguration();
         applyPublicAppBranding(appState.user?.role === 'admin' ? 'Administración' : 'Acceso');
@@ -3699,10 +4153,12 @@ header('Expires: 0');
             services: normalizeArray(result.services),
             accounts: normalizeArray(result.accounts),
             users: normalizeArray(result.users),
+            gallery_slides: normalizeArray(result.gallery_slides),
             admin_profile: result.admin_profile || null,
             admin_settings: result.admin_settings || INITIAL_PUBLIC_APP_SETTINGS,
             mail_configuration: result.mail_configuration || null,
         };
+        appState.publicGallerySlides = normalizeArray(result.gallery_slides);
         renderOverview();
         showAdminStatus('Panel actualizado.', 'success');
     }
@@ -3922,6 +4378,27 @@ header('Expires: 0');
         }
     });
 
+    galleryForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        showAdminStatus(galleryFormAction.value === 'update' ? 'Actualizando slide de la galería...' : 'Guardando slide de la galería...', 'secondary');
+        gallerySubmitButton.disabled = true;
+
+        try {
+            const result = await requestJson('./api/admin/gallery.php', {
+                method: 'POST',
+                body: new FormData(galleryForm),
+            });
+
+            resetGalleryForm();
+            showAdminStatus(result.message, 'success');
+            await loadAdminOverview();
+        } catch (error) {
+            showAdminStatus(error.message, 'danger');
+        } finally {
+            gallerySubmitButton.disabled = false;
+        }
+    });
+
     adminDataForm.addEventListener('submit', async (event) => {
         event.preventDefault();
         showAdminStatus('Guardando datos del administrador...', 'secondary');
@@ -4092,6 +4569,139 @@ header('Expires: 0');
     importModalForm.addEventListener('submit', async (event) => {
         event.preventDefault();
         await startImportProcess();
+    });
+
+    cancelGalleryEditButton.addEventListener('click', () => {
+        resetGalleryForm();
+    });
+
+    gallerySearchInput.addEventListener('input', () => {
+        const state = getGalleryTableState();
+        state.query = gallerySearchInput.value;
+        state.page = 1;
+        renderGalleryAdminTable();
+    });
+
+    galleryPageSize.addEventListener('change', () => {
+        const state = getGalleryTableState();
+        state.pageSize = Number(galleryPageSize.value) || 5;
+        state.page = 1;
+        renderGalleryAdminTable();
+    });
+
+    galleryPagination.addEventListener('click', (event) => {
+        const button = event.target.closest('[data-page-nav]');
+
+        if (!button) {
+            return;
+        }
+
+        const state = getGalleryTableState();
+        state.page += button.dataset.pageNav === 'next' ? 1 : -1;
+        if (state.page < 1) {
+            state.page = 1;
+        }
+        renderGalleryAdminTable();
+    });
+
+    galleryTableBody.addEventListener('click', async (event) => {
+        const saveOrderButton = event.target.closest('[data-save-gallery-sort-order]');
+
+        if (saveOrderButton) {
+            const slideId = String(saveOrderButton.dataset.saveGallerySortOrder || '');
+            const orderInput = galleryTableBody.querySelector(`[data-gallery-sort-order-input="${CSS.escape(slideId)}"]`);
+            const sortOrder = Number(orderInput?.value || 0);
+
+            if (!orderInput || !Number.isInteger(sortOrder) || sortOrder < 1) {
+                showAdminStatus('El orden del slide debe ser un número entero mayor o igual a 1.', 'danger');
+                if (orderInput) {
+                    orderInput.focus();
+                    orderInput.select();
+                }
+                return;
+            }
+
+            showAdminStatus('Guardando orden del slide...', 'secondary');
+
+            try {
+                const formData = new FormData();
+                formData.append('action', 'update_order');
+                formData.append('slide_id', slideId);
+                formData.append('sort_order', String(sortOrder));
+
+                const result = await requestJson('./api/admin/gallery.php', {
+                    method: 'POST',
+                    body: formData,
+                });
+
+                showAdminStatus(result.message, 'success');
+                await loadAdminOverview();
+            } catch (error) {
+                showAdminStatus(error.message, 'danger');
+            }
+
+            return;
+        }
+
+        const editButton = event.target.closest('[data-edit-gallery-slide]');
+
+        if (editButton) {
+            populateGalleryForm(editButton.dataset.editGallerySlide);
+            return;
+        }
+
+        const deleteButton = event.target.closest('[data-delete-gallery-slide]');
+
+        if (!deleteButton) {
+            return;
+        }
+
+        const confirmed = await openConfirmModal({
+            title: 'Eliminar slide',
+            message: 'Esta acción eliminará la imagen de la galería y ya no se mostrará en el sistema.',
+            confirmText: 'Eliminar slide',
+            confirmClass: 'btn-danger',
+        });
+
+        if (!confirmed) {
+            return;
+        }
+
+        showAdminStatus('Eliminando slide de la galería...', 'secondary');
+
+        try {
+            const formData = new FormData();
+            formData.append('action', 'delete');
+            formData.append('slide_id', String(deleteButton.dataset.deleteGallerySlide || ''));
+            const result = await requestJson('./api/admin/gallery.php', {
+                method: 'POST',
+                body: formData,
+            });
+
+            if (String(galleryFormSlideId.value) === String(deleteButton.dataset.deleteGallerySlide || '')) {
+                resetGalleryForm();
+            }
+
+            showAdminStatus(result.message, 'success');
+            await loadAdminOverview();
+        } catch (error) {
+            showAdminStatus(error.message, 'danger');
+        }
+    });
+
+    galleryTableBody.addEventListener('keydown', async (event) => {
+        const orderInput = event.target.closest('[data-gallery-sort-order-input]');
+
+        if (!orderInput || event.key !== 'Enter') {
+            return;
+        }
+
+        event.preventDefault();
+        const saveButton = galleryTableBody.querySelector(`[data-save-gallery-sort-order="${CSS.escape(orderInput.dataset.gallerySortOrderInput || '')}"]`);
+
+        if (saveButton) {
+            saveButton.click();
+        }
     });
 
     registeredUsersSearchInput.addEventListener('input', () => {
@@ -4841,6 +5451,8 @@ header('Expires: 0');
 
     armHistoryGuard();
     applyPublicAppBranding('Acceso');
+    renderGlobalGallery();
+    resetGalleryForm();
     scheduleResponsiveTableSync();
     bootstrapSession();
 </script>

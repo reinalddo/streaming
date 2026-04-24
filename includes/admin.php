@@ -11,6 +11,7 @@ function getAdminOverview(): array
     $authenticatedUser = requireAdminUser();
 
     $pdo = getPdo();
+    ensureGallerySlidesTable($pdo);
     $adminProfile = fetchAdminProfile($pdo, (int) $authenticatedUser['id']);
 
     $services = $pdo->query('SELECT id, nombre, slug, logo_url, color_destacado, descripcion, activo, created_at FROM servicios ORDER BY nombre ASC')->fetchAll();
@@ -92,6 +93,7 @@ function getAdminOverview(): array
         'services' => $servicesOutput,
         'accounts' => $accountsOutput,
         'users' => $usersOutput,
+        'gallery_slides' => fetchGallerySlides($pdo),
         'admin_profile' => $adminProfile,
         'admin_settings' => fetchStoredAdminConfiguration($pdo),
         'mail_configuration' => formatMailConfigurationForClient(fetchStoredMailConfiguration($pdo)),
@@ -101,6 +103,11 @@ function getAdminOverview(): array
 function getPublicAppConfiguration(): array
 {
     return fetchStoredAdminConfiguration();
+}
+
+function getPublicGallerySlides(): array
+{
+    return fetchGallerySlides();
 }
 
 function saveAdminConfiguration(array $input, array $files = []): array
@@ -343,6 +350,150 @@ function deleteService(array $input): array
     deleteLocalServiceAsset((string) $service['logo_url']);
 
     return ['success' => true, 'message' => 'Servicio eliminado correctamente.'];
+}
+
+function createGallerySlide(array $input, array $files = []): array
+{
+    requireAdminUser();
+
+    $slideData = normalizeGallerySlidePayload($input);
+    $imagePath = uploadGalleryImage($files['imagen'] ?? null);
+
+    if ($imagePath === null) {
+        return ['success' => false, 'message' => 'Debes seleccionar una imagen para el slide de la galería.'];
+    }
+
+    $pdo = getPdo();
+    ensureGallerySlidesTable($pdo);
+    $stmt = $pdo->prepare('INSERT INTO galeria_slides (image_url, texto, enlace, open_in_new_tab, sort_order) VALUES (:image_url, :texto, :enlace, :open_in_new_tab, :sort_order)');
+
+    try {
+        $stmt->execute([
+            'image_url' => $imagePath,
+            'texto' => $slideData['texto'],
+            'enlace' => $slideData['enlace'],
+            'open_in_new_tab' => $slideData['open_in_new_tab'],
+            'sort_order' => getNextGallerySortOrder($pdo),
+        ]);
+    } catch (Throwable $exception) {
+        deleteLocalGalleryAsset($imagePath);
+        throw $exception;
+    }
+
+    return ['success' => true, 'message' => 'Slide de la galería guardado correctamente.'];
+}
+
+function updateGallerySlide(array $input, array $files = []): array
+{
+    requireAdminUser();
+
+    $slideId = (int) ($input['slide_id'] ?? 0);
+    $slideData = normalizeGallerySlidePayload($input);
+
+    if ($slideId <= 0) {
+        return ['success' => false, 'message' => 'Debes indicar el slide que deseas actualizar.'];
+    }
+
+    $pdo = getPdo();
+    ensureGallerySlidesTable($pdo);
+    $currentSlideStmt = $pdo->prepare('SELECT id, image_url FROM galeria_slides WHERE id = :id LIMIT 1');
+    $currentSlideStmt->execute(['id' => $slideId]);
+    $currentSlide = $currentSlideStmt->fetch();
+
+    if ($currentSlide === false) {
+        return ['success' => false, 'message' => 'El slide indicado no existe.'];
+    }
+
+    $newImagePath = uploadGalleryImage($files['imagen'] ?? null);
+    $finalImagePath = $newImagePath ?? (($currentSlide['image_url'] ?? '') !== '' ? (string) $currentSlide['image_url'] : null);
+
+    if ($finalImagePath === null) {
+        return ['success' => false, 'message' => 'El slide debe conservar o incluir una imagen válida.'];
+    }
+
+    $stmt = $pdo->prepare('UPDATE galeria_slides SET image_url = :image_url, texto = :texto, enlace = :enlace, open_in_new_tab = :open_in_new_tab WHERE id = :id');
+
+    try {
+        $stmt->execute([
+            'image_url' => $finalImagePath,
+            'texto' => $slideData['texto'],
+            'enlace' => $slideData['enlace'],
+            'open_in_new_tab' => $slideData['open_in_new_tab'],
+            'id' => $slideId,
+        ]);
+    } catch (Throwable $exception) {
+        deleteLocalGalleryAsset($newImagePath);
+        throw $exception;
+    }
+
+    if ($newImagePath !== null) {
+        deleteLocalGalleryAsset((string) $currentSlide['image_url']);
+    }
+
+    return ['success' => true, 'message' => 'Slide de la galería actualizado correctamente.'];
+}
+
+function deleteGallerySlide(array $input): array
+{
+    requireAdminUser();
+
+    $slideId = (int) ($input['slide_id'] ?? 0);
+
+    if ($slideId <= 0) {
+        return ['success' => false, 'message' => 'Debes indicar el slide que deseas eliminar.'];
+    }
+
+    $pdo = getPdo();
+    ensureGallerySlidesTable($pdo);
+    $slideStmt = $pdo->prepare('SELECT id, image_url FROM galeria_slides WHERE id = :id LIMIT 1');
+    $slideStmt->execute(['id' => $slideId]);
+    $slide = $slideStmt->fetch();
+
+    if ($slide === false) {
+        return ['success' => false, 'message' => 'El slide indicado no existe.'];
+    }
+
+    $deleteStmt = $pdo->prepare('DELETE FROM galeria_slides WHERE id = :id');
+    $deleteStmt->execute(['id' => $slideId]);
+
+    if ($deleteStmt->rowCount() === 0) {
+        return ['success' => false, 'message' => 'No fue posible eliminar el slide indicado.'];
+    }
+
+    deleteLocalGalleryAsset((string) $slide['image_url']);
+
+    return ['success' => true, 'message' => 'Slide de la galería eliminado correctamente.'];
+}
+
+function updateGallerySlideOrder(array $input): array
+{
+    requireAdminUser();
+
+    $slideId = (int) ($input['slide_id'] ?? 0);
+    $sortOrder = filter_var($input['sort_order'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+
+    if ($slideId <= 0 || $sortOrder === false) {
+        return ['success' => false, 'message' => 'Debes indicar un slide válido y un orden mayor o igual a 1.'];
+    }
+
+    $pdo = getPdo();
+    ensureGallerySlidesTable($pdo);
+    $stmt = $pdo->prepare('UPDATE galeria_slides SET sort_order = :sort_order WHERE id = :id');
+    $stmt->execute([
+        'sort_order' => (int) $sortOrder,
+        'id' => $slideId,
+    ]);
+
+    if ($stmt->rowCount() === 0) {
+        $existsStmt = $pdo->prepare('SELECT id FROM galeria_slides WHERE id = :id LIMIT 1');
+        $existsStmt->execute(['id' => $slideId]);
+
+        if ($existsStmt->fetch() === false) {
+            return ['success' => false, 'message' => 'El slide indicado no existe.'];
+        }
+    }
+
+    return ['success' => true, 'message' => 'El orden del slide fue actualizado correctamente.'];
 }
 
 function createServiceAccount(array $input): array
@@ -781,6 +932,35 @@ function normalizeServicePayload(array $input): array
     ];
 }
 
+function normalizeGallerySlidePayload(array $input): array
+{
+    $link = trim((string) ($input['enlace'] ?? ''));
+    $linkTarget = (string) ($input['link_target'] ?? 'blank');
+
+    if ($link !== '' && !isValidGalleryLink($link)) {
+        throw new RuntimeException('El enlace del slide no es válido. Usa una URL completa o una ruta interna válida.');
+    }
+
+    return [
+        'texto' => ($text = trim((string) ($input['texto'] ?? ''))) !== '' ? $text : null,
+        'enlace' => $link !== '' ? $link : null,
+        'open_in_new_tab' => $linkTarget === 'self' ? 0 : 1,
+    ];
+}
+
+function isValidGalleryLink(string $value): bool
+{
+    if ($value === '') {
+        return true;
+    }
+
+    if (filter_var($value, FILTER_VALIDATE_URL)) {
+        return true;
+    }
+
+    return str_starts_with($value, '/') || str_starts_with($value, './') || str_starts_with($value, '../') || str_starts_with($value, '#');
+}
+
 function fetchAdminProfile(PDO $pdo, int $adminUserId): array
 {
     $stmt = $pdo->prepare("SELECT id, nombre, apellido, username, email, telefono FROM usuarios WHERE id = :id AND role = 'admin' LIMIT 1");
@@ -815,6 +995,76 @@ function ensureAdminConfigurationTable(?PDO $pdo = null): void
     );
 
     $pdo->exec("INSERT IGNORE INTO configuracion_admin (id, nombre_pagina, logo_url) VALUES (1, 'Prycorreos', NULL)");
+}
+
+function ensureGallerySlidesTable(?PDO $pdo = null): void
+{
+    $pdo ??= getPdo();
+    $columnWasAdded = false;
+    $pdo->exec(
+        'CREATE TABLE IF NOT EXISTS galeria_slides (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            image_url VARCHAR(255) NOT NULL,
+            texto VARCHAR(255) NULL,
+            enlace VARCHAR(500) NULL,
+            open_in_new_tab TINYINT(1) NOT NULL DEFAULT 1,
+            sort_order INT UNSIGNED NOT NULL DEFAULT 1,
+            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY (id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci'
+    );
+
+    $columnStmt = $pdo->query("SHOW COLUMNS FROM galeria_slides LIKE 'sort_order'");
+    if ($columnStmt->fetch() === false) {
+        $pdo->exec('ALTER TABLE galeria_slides ADD COLUMN sort_order INT UNSIGNED NOT NULL DEFAULT 1 AFTER open_in_new_tab');
+        $columnWasAdded = true;
+    }
+
+    $pdo->exec('UPDATE galeria_slides SET sort_order = id WHERE sort_order IS NULL OR sort_order = 0');
+
+    if ($columnWasAdded) {
+        $pdo->exec('UPDATE galeria_slides SET sort_order = id');
+        return;
+    }
+
+    $stats = $pdo->query('SELECT COUNT(*) AS total_rows, COUNT(DISTINCT sort_order) AS distinct_orders, MIN(sort_order) AS min_order, MAX(sort_order) AS max_order FROM galeria_slides')->fetch();
+
+    if (
+        is_array($stats)
+        && (int) ($stats['total_rows'] ?? 0) > 1
+        && (int) ($stats['distinct_orders'] ?? 0) === 1
+        && (int) ($stats['min_order'] ?? 0) === 1
+        && (int) ($stats['max_order'] ?? 0) === 1
+    ) {
+        $pdo->exec('UPDATE galeria_slides SET sort_order = id');
+    }
+}
+
+function fetchGallerySlides(?PDO $pdo = null): array
+{
+    $pdo ??= getPdo();
+    ensureGallerySlidesTable($pdo);
+    $slides = $pdo->query('SELECT id, image_url, texto, enlace, open_in_new_tab, sort_order, created_at, updated_at FROM galeria_slides ORDER BY sort_order ASC, id ASC')->fetchAll();
+
+    return array_values(array_map(static function (array $slide): array {
+        return [
+            'id' => (int) $slide['id'],
+            'image_url' => (string) $slide['image_url'],
+            'texto' => $slide['texto'] !== null ? (string) $slide['texto'] : null,
+            'enlace' => $slide['enlace'] !== null ? (string) $slide['enlace'] : null,
+            'open_in_new_tab' => (int) $slide['open_in_new_tab'] === 1,
+            'sort_order' => (int) ($slide['sort_order'] ?? 1),
+            'created_at' => $slide['created_at'] !== null ? (string) $slide['created_at'] : null,
+            'updated_at' => $slide['updated_at'] !== null ? (string) $slide['updated_at'] : null,
+        ];
+    }, is_array($slides) ? $slides : []));
+}
+
+function getNextGallerySortOrder(PDO $pdo): int
+{
+    $value = $pdo->query('SELECT COALESCE(MAX(sort_order), 0) + 1 FROM galeria_slides')->fetchColumn();
+    return max(1, (int) $value);
 }
 
 function fetchStoredAdminConfiguration(?PDO $pdo = null): array
@@ -855,6 +1105,11 @@ function uploadServiceLogo(?array $file): ?string
 function uploadAdminSiteLogo(?array $file): ?string
 {
     return uploadImageAsset($file, 'assets/branding', 'branding_', 'logo de la página');
+}
+
+function uploadGalleryImage(?array $file): ?string
+{
+    return uploadImageAsset($file, 'assets/galeria', 'gallery_', 'imagen de la galería');
 }
 
 function uploadImageAsset(?array $file, string $relativeDir, string $prefix, string $entityLabel): ?string
@@ -922,6 +1177,11 @@ function deleteLocalServiceAsset(?string $relativePath): void
 function deleteLocalAdminBrandAsset(?string $relativePath): void
 {
     deleteLocalAsset($relativePath, 'assets/branding/');
+}
+
+function deleteLocalGalleryAsset(?string $relativePath): void
+{
+    deleteLocalAsset($relativePath, 'assets/galeria/');
 }
 
 function deleteLocalAsset(?string $relativePath, string $expectedPrefix): void
