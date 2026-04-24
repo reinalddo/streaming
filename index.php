@@ -90,17 +90,48 @@ header('Expires: 0');
             margin-bottom: 1rem;
         }
 
+        .auth-tabs,
+        .admin-tabs {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 0.75rem;
+            padding: 0.45rem;
+            border: 1px solid var(--pc-border);
+            border-radius: 1.25rem;
+            background: linear-gradient(180deg, #f8fbff 0%, #eef4ff 100%);
+        }
+
+        .auth-tabs .nav-item,
+        .admin-tabs .nav-item {
+            width: 100%;
+        }
+
         .auth-tabs .nav-link,
         .admin-tabs .nav-link {
-            border-radius: 999px;
+            width: 100%;
+            min-height: 72px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.85rem 0.75rem;
+            border: 1px solid var(--pc-border);
+            border-radius: 1rem;
+            background: #fff;
             color: var(--pc-primary-dark);
-            font-weight: 600;
+            font-weight: 700;
+            line-height: 1.2;
+            text-align: center;
+            box-shadow: 0 10px 24px rgba(24, 33, 47, 0.06);
+            transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
         }
 
         .auth-tabs .nav-link.active,
         .admin-tabs .nav-link.active {
-            background: var(--pc-primary);
+            background: linear-gradient(135deg, var(--pc-primary) 0%, var(--pc-primary-dark) 100%);
+            border-color: rgba(11, 87, 208, 0.22);
             color: #fff;
+            box-shadow: 0 16px 28px rgba(11, 87, 208, 0.22);
+            transform: translateY(-1px);
         }
 
         .btn-primary {
@@ -508,6 +539,16 @@ header('Expires: 0');
             margin-bottom: 1rem;
         }
 
+        .table-toolbar > .d-flex:first-child {
+            flex: 1 1 100%;
+            max-width: 100%;
+        }
+
+        .table-toolbar > .d-flex:first-child .form-control[type="search"] {
+            width: 100%;
+            min-width: 0;
+        }
+
         .pagination-strip {
             display: flex;
             justify-content: space-between;
@@ -546,11 +587,184 @@ header('Expires: 0');
             font-weight: 600;
         }
 
+        @media (max-width: 991.98px) {
+            .data-table-wrapper {
+                overflow: visible;
+                border: 0;
+                background: transparent;
+            }
+
+            .table-responsive {
+                overflow: visible;
+            }
+
+            .table-responsive .table,
+            .table-responsive .table tbody,
+            .table-responsive .table tr,
+            .table-responsive .table td {
+                display: block;
+                width: 100%;
+            }
+
+            .table-responsive .table {
+                margin-bottom: 0;
+            }
+
+            .table-responsive .table thead {
+                display: none;
+            }
+
+            .table-responsive .table tbody {
+                display: grid;
+                gap: 0.9rem;
+            }
+
+            .table-responsive .table tbody tr {
+                border: 1px solid var(--pc-border);
+                border-radius: 1.1rem;
+                background: #fff;
+                box-shadow: 0 16px 28px rgba(24, 33, 47, 0.08);
+                overflow: hidden;
+            }
+
+            .table-responsive .table tbody tr.table-card-row-full {
+                border: 0;
+                border-radius: 0;
+                background: transparent;
+                box-shadow: none;
+                overflow: visible;
+            }
+
+            .table-responsive .table tbody td {
+                display: grid;
+                grid-template-columns: minmax(112px, 124px) minmax(0, 1fr);
+                gap: 0.85rem;
+                padding: 0.9rem 1rem;
+                border-top: 1px solid #eef2f7;
+                text-align: left;
+            }
+
+            .table-responsive .table tbody td:first-child {
+                border-top: 0;
+            }
+
+            .table-responsive .table tbody td::before {
+                content: attr(data-label);
+                color: var(--pc-muted);
+                font-size: 0.74rem;
+                font-weight: 700;
+                line-height: 1.3;
+                text-transform: uppercase;
+                letter-spacing: 0.03em;
+            }
+
+            .table-responsive .table tbody td.table-card-full {
+                display: block;
+                padding: 0;
+                border-top: 0;
+            }
+
+            .table-responsive .table tbody td.table-card-full::before {
+                display: none;
+            }
+
+            .table-responsive .table tbody td > * {
+                min-width: 0;
+            }
+
+            .table-responsive .table tbody .table-action-group,
+            .table-responsive .table tbody td .d-flex,
+            .table-responsive .table tbody td .d-grid {
+                justify-content: flex-start;
+            }
+
+            .table-responsive .table tbody td .btn {
+                max-width: 100%;
+            }
+
+            .service-accordion-panel {
+                padding: 0.9rem 0 0;
+            }
+
+            .service-users-table .table tbody td {
+                grid-template-columns: minmax(0, 1fr);
+                gap: 0.45rem;
+                padding: 0.8rem 0.95rem;
+            }
+
+            .service-users-table .table tbody td::before {
+                display: block;
+            }
+
+            .service-users-table .table tbody td .fw-semibold,
+            .service-users-table .table tbody td .small,
+            .service-users-table .table tbody td .text-secondary {
+                white-space: normal;
+                word-break: break-word;
+            }
+
+            .service-users-table .table tbody td .btn {
+                width: auto;
+                min-width: 0;
+                padding: 0.4rem 0.85rem;
+                font-size: 0.88rem;
+                border-radius: 0.8rem;
+                justify-self: start;
+            }
+        }
+
         @media (min-width: 992px) {
             .auth-shell,
             .user-shell,
             .admin-shell {
                 padding: 2rem;
+            }
+
+            .auth-tabs,
+            .admin-tabs {
+                display: inline-flex;
+                flex-wrap: nowrap;
+                justify-content: flex-start;
+                align-items: stretch;
+                gap: 0.75rem;
+                max-width: 100%;
+                padding: 0.45rem;
+                border: 1px solid var(--pc-border);
+                border-radius: 1.25rem;
+                background: linear-gradient(180deg, #f8fbff 0%, #eef4ff 100%);
+            }
+
+            .auth-tabs .nav-item,
+            .admin-tabs .nav-item {
+                width: auto;
+                flex: 0 0 auto;
+            }
+
+            .auth-tabs .nav-link,
+            .admin-tabs .nav-link {
+                min-height: 58px;
+                padding: 0.8rem 1.2rem;
+                border: 1px solid var(--pc-border);
+                border-radius: 1rem;
+                background: #fff;
+                color: var(--pc-primary-dark);
+                font-weight: 700;
+                box-shadow: 0 10px 24px rgba(24, 33, 47, 0.06);
+                transform: none;
+            }
+
+            .auth-tabs .nav-link.active,
+            .admin-tabs .nav-link.active {
+                background: linear-gradient(135deg, var(--pc-primary) 0%, var(--pc-primary-dark) 100%);
+                border-color: rgba(11, 87, 208, 0.22);
+                color: #fff;
+                box-shadow: 0 16px 28px rgba(11, 87, 208, 0.22);
+                transform: none;
+            }
+
+            .table-toolbar > .d-flex:first-child {
+                flex: 1 1 28rem;
+                max-width: 38rem;
             }
 
             .auth-card-login {
@@ -839,6 +1053,21 @@ header('Expires: 0');
                                         </form>
                                     </div>
 
+                                    <div class="table-toolbar mb-3">
+                                        <div class="d-flex gap-2 flex-wrap align-items-center">
+                                            <input class="form-control" type="search" id="serviceAccountsSearchInput" placeholder="Buscar por correo, descripción o contraseña">
+                                        </div>
+                                        <div class="d-flex gap-2 align-items-center flex-wrap">
+                                            <label class="small text-secondary" for="serviceAccountsPageSize">Filas por página</label>
+                                            <select class="form-select" id="serviceAccountsPageSize">
+                                                <option value="5">5</option>
+                                                <option value="10" selected>10</option>
+                                                <option value="20">20</option>
+                                                <option value="50">50</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
                                     <div class="data-table-wrapper">
                                         <div class="table-responsive">
                                             <table class="table table-hover align-middle mb-0">
@@ -854,6 +1083,10 @@ header('Expires: 0');
                                                 <tbody id="serviceAccountsTableBody"></tbody>
                                             </table>
                                         </div>
+                                    </div>
+                                    <div class="pagination-strip mt-3">
+                                        <div id="serviceAccountsSummary" class="small text-secondary">No hay resultados para los filtros actuales.</div>
+                                        <div id="serviceAccountsPagination" class="table-action-group"></div>
                                     </div>
                                 </div>
                             </div>
@@ -1105,7 +1338,7 @@ header('Expires: 0');
                     </div>
                 </div>
                 <div class="data-table-wrapper">
-                    <div class="table-responsive">
+                    <div class="table-responsive service-users-table">
                         <table class="table table-hover align-middle mb-0">
                             <thead>
                                 <tr>
@@ -1155,7 +1388,7 @@ header('Expires: 0');
                     </div>
                 </div>
                 <div class="data-table-wrapper">
-                    <div class="table-responsive">
+                    <div class="table-responsive service-users-table">
                         <table class="table table-hover align-middle mb-0">
                             <thead>
                                 <tr>
@@ -1391,6 +1624,10 @@ header('Expires: 0');
     const serviceAccountsTitle = document.getElementById('serviceAccountsTitle');
     const serviceAccountsSubtitle = document.getElementById('serviceAccountsSubtitle');
     const serviceAccountsTableBody = document.getElementById('serviceAccountsTableBody');
+    const serviceAccountsSearchInput = document.getElementById('serviceAccountsSearchInput');
+    const serviceAccountsPageSize = document.getElementById('serviceAccountsPageSize');
+    const serviceAccountsSummary = document.getElementById('serviceAccountsSummary');
+    const serviceAccountsPagination = document.getElementById('serviceAccountsPagination');
     const backToServicesButton = document.getElementById('backToServicesButton');
     const toggleCreateAccountButton = document.getElementById('toggleCreateAccountButton');
     const createAccountPanel = document.getElementById('createAccountPanel');
@@ -1562,6 +1799,44 @@ header('Expires: 0');
 
     function normalizeArray(value) {
         return Array.isArray(value) ? value : [];
+    }
+
+    function syncResponsiveTableLabels(root = document) {
+        root.querySelectorAll('.table-responsive table').forEach((table) => {
+            const headers = Array.from(table.querySelectorAll('thead th')).map((headerCell) => headerCell.textContent.trim());
+
+            table.querySelectorAll('tbody tr').forEach((row) => {
+                const cells = Array.from(row.children).filter((cell) => cell.tagName === 'TD');
+                const isFullRow = cells.length === 1 && Number(cells[0].getAttribute('colspan') || 1) > 1;
+
+                row.classList.toggle('table-card-row-full', isFullRow);
+
+                cells.forEach((cell, index) => {
+                    const isFullCell = Number(cell.getAttribute('colspan') || 1) > 1;
+                    cell.classList.toggle('table-card-full', isFullCell);
+
+                    if (isFullCell) {
+                        cell.setAttribute('data-label', '');
+                        return;
+                    }
+
+                    cell.setAttribute('data-label', headers[index] || 'Dato');
+                });
+            });
+        });
+    }
+
+    let responsiveTableSyncFrame = 0;
+
+    function scheduleResponsiveTableSync() {
+        if (responsiveTableSyncFrame !== 0) {
+            return;
+        }
+
+        responsiveTableSyncFrame = window.requestAnimationFrame(() => {
+            responsiveTableSyncFrame = 0;
+            syncResponsiveTableLabels();
+        });
     }
 
     async function requestJson(url, options = {}) {
@@ -2479,16 +2754,34 @@ header('Expires: 0');
         }
 
         const accounts = normalizeArray(service.accounts);
+        const state = getListTableState('serviceAccounts');
+        const normalizedQuery = state.query.trim().toLowerCase();
+        const filteredAccounts = accounts.filter((account) => {
+            const assignedUsers = normalizeArray(account.assigned_users);
+            const haystack = [
+                account.correo_acceso,
+                account.descripcion || '',
+                account.password_acceso,
+                ...assignedUsers.map((user) => [user.nombre, user.apellido, user.username, user.email].join(' ')),
+            ].join(' ').toLowerCase();
+
+            return haystack.includes(normalizedQuery);
+        });
+        const { paginatedRows, summary, totalPages } = getPaginatedRows(filteredAccounts, state);
         serviceAccountsTitle.textContent = `Cuentas del servicio ${service.nombre}`;
         serviceAccountsSubtitle.textContent = 'Consulta las cuentas registradas para este servicio.';
         serviceAccountServiceId.value = String(service.id);
+        serviceAccountsSearchInput.value = state.query;
+        serviceAccountsPageSize.value = String(state.pageSize);
+        serviceAccountsSummary.textContent = summary;
+        renderPaginationControls(serviceAccountsPagination, state.page, totalPages);
 
-        if (accounts.length === 0) {
+        if (filteredAccounts.length === 0) {
             serviceAccountsTableBody.innerHTML = '<tr><td colspan="5"><div class="empty-state">Este servicio aún no tiene cuentas registradas.</div></td></tr>';
             return;
         }
 
-        serviceAccountsTableBody.innerHTML = accounts.map((account) => {
+        serviceAccountsTableBody.innerHTML = paginatedRows.map((account) => {
             const assignedUsers = normalizeArray(account.assigned_users);
             const buttonLabel = assignedUsers.length === 0 ? 'Ver usuarios (0)' : `Ver usuarios (${assignedUsers.length})`;
 
@@ -3580,6 +3873,35 @@ header('Expires: 0');
         openAssignedUsersModal(button.dataset.openAssignedUsers);
     });
 
+    serviceAccountsSearchInput.addEventListener('input', () => {
+        const state = getListTableState('serviceAccounts');
+        state.query = serviceAccountsSearchInput.value;
+        state.page = 1;
+        renderServiceAccountsView();
+    });
+
+    serviceAccountsPageSize.addEventListener('change', () => {
+        const state = getListTableState('serviceAccounts');
+        state.pageSize = Number(serviceAccountsPageSize.value) || 10;
+        state.page = 1;
+        renderServiceAccountsView();
+    });
+
+    serviceAccountsPagination.addEventListener('click', (event) => {
+        const button = event.target.closest('[data-page-nav]');
+
+        if (!button) {
+            return;
+        }
+
+        const state = getListTableState('serviceAccounts');
+        state.page += button.dataset.pageNav === 'next' ? 1 : -1;
+        if (state.page < 1) {
+            state.page = 1;
+        }
+        renderServiceAccountsView();
+    });
+
     assignedUsersTableBody.addEventListener('click', async (event) => {
         const unassignButton = event.target.closest('[data-unassign-account-user]');
 
@@ -3967,7 +4289,17 @@ header('Expires: 0');
         }
     });
 
+    const responsiveTableObserver = new MutationObserver(() => {
+        scheduleResponsiveTableSync();
+    });
+
+    responsiveTableObserver.observe(document.body, {
+        childList: true,
+        subtree: true,
+    });
+
     armHistoryGuard();
+    scheduleResponsiveTableSync();
     bootstrapSession();
 </script>
 </body>
