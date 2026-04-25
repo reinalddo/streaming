@@ -1324,11 +1324,11 @@ header('Expires: 0');
     <div id="appTopbar" class="app-topbar">
         <a href="#" id="topbarBrand" class="topbar-brand">
             <div class="topbar-brand-mark">
-                <img id="topbarLogoImage" src="" alt="Logo de la página" class="topbar-hidden">
-                <span id="topbarLogoFallback" class="topbar-brand-fallback">P</span>
+                <img id="topbarLogoImage" src="<?= htmlspecialchars((string) ($initialFavicon ?? ''), ENT_QUOTES, 'UTF-8') ?>" alt="Logo de la página" class="<?= $initialFavicon ? '' : 'topbar-hidden' ?>">
+                <span id="topbarLogoFallback" class="topbar-brand-fallback <?= $initialFavicon ? 'topbar-hidden' : '' ?>"><?= htmlspecialchars(mb_strtoupper(mb_substr($initialPageName, 0, 1), 'UTF-8'), ENT_QUOTES, 'UTF-8') ?></span>
             </div>
             <div class="topbar-brand-copy">
-                <strong id="topbarPageName">Prycorreos</strong>
+                <strong id="topbarPageName"><?= htmlspecialchars($initialPageName, ENT_QUOTES, 'UTF-8') ?></strong>
             </div>
         </a>
 
