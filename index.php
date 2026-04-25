@@ -4858,6 +4858,31 @@ header('Expires: 0');
         }).join('');
     }
 
+    function rerenderServiceAssignmentsAndRestoreFilterFocus(serviceId, selectionStart = null, selectionEnd = null) {
+        renderServiceAssignmentTable();
+
+        const normalizedServiceId = String(serviceId || '');
+        if (normalizedServiceId === '') {
+            return;
+        }
+
+        const nextFilterInput = serviceAssignmentsTableBody.querySelector(`[data-service-filter="${CSS.escape(normalizedServiceId)}"]`);
+
+        if (!nextFilterInput) {
+            return;
+        }
+
+        nextFilterInput.focus({ preventScroll: true });
+
+        if (typeof selectionStart === 'number' && typeof selectionEnd === 'number') {
+            const maxLength = nextFilterInput.value.length;
+            nextFilterInput.setSelectionRange(
+                Math.min(selectionStart, maxLength),
+                Math.min(selectionEnd, maxLength)
+            );
+        }
+    }
+
     function renderServiceAssignUsersTable() {
         const service = getServiceById(appState.selectedAssignServiceId);
 
@@ -6101,7 +6126,11 @@ header('Expires: 0');
         const state = getAssignmentTableState(filterInput.dataset.serviceFilter);
         state.query = filterInput.value;
         state.page = 1;
-        renderServiceAssignmentTable();
+        rerenderServiceAssignmentsAndRestoreFilterFocus(
+            filterInput.dataset.serviceFilter,
+            filterInput.selectionStart,
+            filterInput.selectionEnd
+        );
     });
 
     serviceAssignmentsTableBody.addEventListener('change', (event) => {
