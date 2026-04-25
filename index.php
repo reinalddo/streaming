@@ -200,6 +200,34 @@ header('Expires: 0');
             display: none !important;
         }
 
+        .modal {
+            --bs-modal-zindex: 1200;
+            padding: calc(var(--pc-topbar-height) + 0.75rem) 0.75rem 1rem;
+        }
+
+        .modal-backdrop {
+            --bs-backdrop-zindex: 1190;
+        }
+
+        .modal .modal-content {
+            max-height: calc(100vh - var(--pc-topbar-height) - 1.75rem);
+        }
+
+        .modal .modal-body {
+            padding-bottom: 1.25rem;
+        }
+
+        .modal .modal-fullscreen,
+        .modal .modal-fullscreen-sm-down,
+        .modal .modal-fullscreen-md-down,
+        .modal .modal-fullscreen-lg-down,
+        .modal .modal-fullscreen-xl-down,
+        .modal .modal-fullscreen-xxl-down {
+            width: 100%;
+            max-width: 100%;
+            height: 100%;
+        }
+
         .auth-shell,
         .user-shell,
         .admin-shell {
@@ -1096,6 +1124,10 @@ header('Expires: 0');
                 padding-top: var(--pc-topbar-height);
             }
 
+            .modal {
+                padding: calc(var(--pc-topbar-height) + 0.5rem) 0.35rem 0.75rem;
+            }
+
             .app-topbar {
                 padding: 0.55rem 0.75rem;
                 gap: 0.8rem;
@@ -1979,11 +2011,11 @@ header('Expires: 0');
                         <table class="table table-hover align-middle mb-0">
                             <thead>
                                 <tr>
+                                    <th>Logo</th>
                                     <th>Servicio</th>
-                                    <th>Cuenta</th>
-                                    <th>Descripción</th>
+                                    <th>Correo</th>
                                     <th>Clave</th>
-                                    <th>Acciones</th>
+                                    <th>Descripción</th>
                                 </tr>
                             </thead>
                             <tbody id="userAssignmentsTableBody"></tbody>
@@ -2023,6 +2055,7 @@ header('Expires: 0');
                         <div class="col-12 col-lg-2">
                             <label class="form-label" for="serviceAssignUsersPageSize">Filas por página</label>
                             <select class="form-select" id="serviceAssignUsersPageSize">
+                                <option value="5" selected>5</option>
                                 <option value="10">10</option>
                                 <option value="20">20</option>
                                 <option value="50">50</option>
@@ -2041,7 +2074,7 @@ header('Expires: 0');
                                     <th>Nombre</th>
                                     <th>Usuario</th>
                                     <th>Correo</th>
-                                    <th>Asignaciones en este servicio</th>
+                                    <th>Cuentas asignadas</th>
                                     <th>Acción</th>
                                 </tr>
                             </thead>
@@ -2396,6 +2429,26 @@ header('Expires: 0');
     const serviceAssignUsersPagination = document.getElementById('serviceAssignUsersPagination');
     const serviceAssignUsersModal = new bootstrap.Modal(serviceAssignUsersModalElement);
 
+    serviceAssignUsersModalElement.addEventListener('hidden.bs.modal', () => {
+        if (appState.pendingUserAssignmentsUserId === null) {
+            return;
+        }
+
+        const pendingUserId = appState.pendingUserAssignmentsUserId;
+        appState.pendingUserAssignmentsUserId = null;
+        openUserAssignmentsModal(pendingUserId);
+    });
+
+    userAssignmentsModalElement.addEventListener('hidden.bs.modal', () => {
+        if (!appState.resumeServiceAssignContext) {
+            return;
+        }
+
+        const { serviceId, selectedAccountId } = appState.resumeServiceAssignContext;
+        appState.resumeServiceAssignContext = null;
+        openServiceAssignUsersModal(serviceId, selectedAccountId);
+    });
+
     const confirmActionModalElement = document.getElementById('confirmActionModal');
     const confirmActionModalTitle = document.getElementById('confirmActionModalTitle');
     const confirmActionModalBody = document.getElementById('confirmActionModalBody');
@@ -2479,6 +2532,8 @@ header('Expires: 0');
         listTableState: {},
         confirmResolver: null,
         selectedUserAssignmentsUserId: null,
+        pendingUserAssignmentsUserId: null,
+        resumeServiceAssignContext: null,
         overview: {
             services: [],
             accounts: [],
@@ -2877,7 +2932,7 @@ header('Expires: 0');
             appState.listTableState[key] = {
                 query: '',
                 page: 1,
-                pageSize: 10,
+                pageSize: key === 'serviceAssignUsers' ? 5 : 10,
             };
         }
 
@@ -3725,6 +3780,56 @@ header('Expires: 0');
         return `<span>${escapeHtml(service.nombre.slice(0, 1).toUpperCase())}</span>`;
     }
 
+    function renderAssignmentServiceLogo(assignment) {
+        const serviceName = String(assignment.service_name || 'Servicio');
+        const backgroundColor = escapeHtml(assignment.color || '#0b57d0');
+        const innerMarkup = assignment.logo_url
+            ? `<img src="${escapeHtml(assignment.logo_url)}" alt="${escapeHtml(serviceName)}">`
+            : escapeHtml(serviceName.slice(0, 1).toUpperCase());
+
+        return `<div class="service-logo" style="background:${backgroundColor};">${innerMarkup}</div>`;
+    }
+
+    function renderUserAssignmentsTable(user, { resetSearch = false } = {}) {
+        const assignments = normalizeArray(user?.assignments);
+        const state = getListTableState('userAssignments');
+
+        if (resetSearch) {
+            state.query = '';
+            state.page = 1;
+        }
+
+        const normalizedQuery = state.query.trim().toLowerCase();
+        const filteredAssignments = assignments.filter((assignment) => [assignment.service_name, assignment.account_email, assignment.description || '', assignment.account_password].join(' ').toLowerCase().includes(normalizedQuery));
+        const { paginatedRows, summary, totalPages } = getPaginatedRows(filteredAssignments, state);
+
+        userAssignmentsSearchInput.value = state.query;
+        userAssignmentsPageSize.value = String(state.pageSize);
+        userAssignmentsSummary.textContent = summary;
+        renderPaginationControls(userAssignmentsPagination, state.page, totalPages);
+
+        if (filteredAssignments.length === 0) {
+            const emptyMessage = assignments.length === 0
+                ? 'Este usuario aún no tiene cuentas asignadas.'
+                : 'No hay cuentas que coincidan con los filtros actuales.';
+            userAssignmentsTableBody.innerHTML = `<tr><td colspan="5"><div class="empty-state">${emptyMessage}</div></td></tr>`;
+            return;
+        }
+
+        userAssignmentsTableBody.innerHTML = paginatedRows.map((assignment) => `
+            <tr>
+                <td data-label="Logo">${renderAssignmentServiceLogo(assignment)}</td>
+                <td data-label="Servicio"><div class="fw-semibold">${escapeHtml(assignment.service_name)}</div></td>
+                <td data-label="Correo">${escapeHtml(assignment.account_email)}</td>
+                <td data-label="Clave">${escapeHtml(assignment.account_password)}</td>
+                <td data-label="Descripción">
+                    <div>${escapeHtml(assignment.description || 'Sin descripción')}</div>
+                    <button class="btn btn-sm btn-outline-danger mt-2" type="button" data-unassign-user-assignment="${assignment.assignment_id}">Desafiliar</button>
+                </td>
+            </tr>
+        `).join('');
+    }
+
     function openConfirmModal({ title, message, confirmText = 'Aceptar', confirmClass = 'btn-danger' }) {
         return new Promise((resolve) => {
             appState.confirmResolver = resolve;
@@ -4141,37 +4246,9 @@ header('Expires: 0');
 
         appState.selectedUserAssignmentsUserId = Number(userId);
         const assignments = normalizeArray(user.assignments);
-        const state = getListTableState('userAssignments');
-        state.query = '';
-        state.page = 1;
-        const normalizedQuery = state.query.trim().toLowerCase();
-        const filteredAssignments = assignments.filter((assignment) => [assignment.service_name, assignment.account_email, assignment.description || '', assignment.account_password].join(' ').toLowerCase().includes(normalizedQuery));
-        const { paginatedRows, summary, totalPages } = getPaginatedRows(filteredAssignments, state);
-        userAssignmentsModalTitle.textContent = `Cuentas asignadas a ${user.nombre} ${user.apellido}`;
+        userAssignmentsModalTitle.textContent = `Cuentas Asignadas a ${user.nombre} ${user.apellido}`;
         userAssignmentsModalSubtitle.textContent = `${assignments.length} cuenta(s) asignada(s) en total`;
-        userAssignmentsSearchInput.value = state.query;
-        userAssignmentsPageSize.value = String(state.pageSize);
-        userAssignmentsSummary.textContent = summary;
-        renderPaginationControls(userAssignmentsPagination, state.page, totalPages);
-
-        if (filteredAssignments.length === 0) {
-            const emptyMessage = assignments.length === 0
-                ? 'Este usuario aún no tiene cuentas asignadas.'
-                : 'No hay cuentas que coincidan con los filtros actuales.';
-            userAssignmentsTableBody.innerHTML = `<tr><td colspan="5"><div class="empty-state">${emptyMessage}</div></td></tr>`;
-        } else {
-            userAssignmentsTableBody.innerHTML = paginatedRows.map((assignment) => `
-                <tr>
-                    <td>${escapeHtml(assignment.service_name)}</td>
-                    <td>${escapeHtml(assignment.account_email)}</td>
-                    <td>${escapeHtml(assignment.description || 'Sin descripción')}</td>
-                    <td>${escapeHtml(assignment.account_password)}</td>
-                    <td>
-                        <button class="btn btn-sm btn-outline-danger" type="button" data-unassign-user-assignment="${assignment.assignment_id}">Desafiliar</button>
-                    </td>
-                </tr>
-            `).join('');
-        }
+        renderUserAssignmentsTable(user, { resetSearch: true });
 
         userAssignmentsModal.show();
     }
@@ -4379,6 +4456,7 @@ header('Expires: 0');
         }
 
         const serviceAccounts = normalizeArray(service.accounts);
+        const serviceAccountIds = new Set(serviceAccounts.map((account) => Number(account.id)));
         const selectedAccountId = Number(serviceAssignAccountSelect.value || 0);
         const state = getListTableState('serviceAssignUsers');
         const searchQuery = state.query.trim().toLowerCase();
@@ -4391,12 +4469,14 @@ header('Expires: 0');
         }
 
         const users = getUsers().filter((user) => {
-            const serviceAssignments = normalizeArray(user.assignments).filter((assignment) => assignment.service_name === service.nombre);
+            const serviceAssignments = normalizeArray(user.assignments).filter((assignment) => serviceAccountIds.has(Number(assignment.account_id)));
+            const allAssignments = normalizeArray(user.assignments);
             const haystack = [
                 user.nombre,
                 user.apellido,
                 user.username,
                 user.email,
+                ...allAssignments.map((assignment) => `${assignment.account_email} ${assignment.description || ''} ${assignment.service_name || ''}`),
                 ...serviceAssignments.map((assignment) => `${assignment.account_email} ${assignment.description || ''}`),
             ].join(' ').toLowerCase();
 
@@ -4414,25 +4494,37 @@ header('Expires: 0');
         }
 
         serviceAssignUsersTableBody.innerHTML = paginatedRows.map((user) => {
-            const serviceAssignments = normalizeArray(user.assignments).filter((assignment) => assignment.service_name === service.nombre);
+            const serviceAssignments = normalizeArray(user.assignments).filter((assignment) => serviceAccountIds.has(Number(assignment.account_id)));
+            const allAssignments = normalizeArray(user.assignments);
+            const visibleAssignments = allAssignments.slice(0, 5);
+            const totalAssignmentsLabel = allAssignments.length === 1 ? '1 cuenta' : `${allAssignments.length} cuentas`;
             const selectedAccountAssignment = serviceAssignments.find((assignment) => Number(assignment.account_id) === selectedAccountId) || null;
             const alreadyAssignedToSelectedAccount = selectedAccountAssignment !== null;
-            const currentAssignmentsMarkup = serviceAssignments.length === 0
-                ? '<span class="text-secondary small">Sin asignaciones en este servicio</span>'
-                : serviceAssignments.map((assignment) => `
-                    <div class="small mb-1">
-                        <span class="fw-semibold">${escapeHtml(assignment.account_email)}</span>
-                        <span class="text-secondary">${escapeHtml(assignment.description || 'Sin descripción')}</span>
+            const currentAssignmentsMarkup = `
+                <div class="d-grid gap-2">
+                    <div>
+                        ${allAssignments.length === 0
+                            ? '<span class="text-secondary small">Sin cuentas asignadas</span>'
+                            : visibleAssignments.map((assignment) => `
+                                <div class="small mb-1">
+                                    <span class="fw-semibold">${escapeHtml(assignment.account_email)}</span>
+                                    <span class="text-secondary">${escapeHtml(assignment.description || 'Sin descripción')}</span>
+                                </div>
+                            `).join('')}
                     </div>
-                `).join('');
+                    <div>
+                        <button class="btn btn-sm btn-outline-primary" type="button" data-view-user-assignments-inline="${user.id}" ${allAssignments.length === 0 ? 'disabled' : ''}>Ver todas las cuentas de este usuario (${totalAssignmentsLabel})</button>
+                    </div>
+                </div>
+            `;
 
             return `
                 <tr>
-                    <td>${escapeHtml(user.nombre)} ${escapeHtml(user.apellido)}</td>
-                    <td>@${escapeHtml(user.username)}</td>
-                    <td>${escapeHtml(user.email)}</td>
-                    <td>${currentAssignmentsMarkup}</td>
-                    <td>
+                    <td data-label="Nombre">${escapeHtml(user.nombre)} ${escapeHtml(user.apellido)}</td>
+                    <td data-label="Usuario">@${escapeHtml(user.username)}</td>
+                    <td data-label="Correo">${escapeHtml(user.email)}</td>
+                    <td data-label="Cuentas asignadas">${currentAssignmentsMarkup}</td>
+                    <td data-label="Acción">
                         ${alreadyAssignedToSelectedAccount
                             ? `<button class="btn btn-sm btn-outline-danger" type="button" data-unassign-service-modal="${selectedAccountAssignment.assignment_id}">Desasignar</button>`
                             : `<button class="btn btn-sm btn-primary" type="button" data-assign-user-id="${user.id}" ${selectedAccountId <= 0 ? 'disabled' : ''}>Asignar</button>`}
@@ -5162,26 +5254,7 @@ header('Expires: 0');
                 return;
             }
 
-            const assignments = normalizeArray(user.assignments);
-            const normalizedQuery = state.query.trim().toLowerCase();
-            const filteredAssignments = assignments.filter((assignment) => [assignment.service_name, assignment.account_email, assignment.description || '', assignment.account_password].join(' ').toLowerCase().includes(normalizedQuery));
-            const { paginatedRows, summary, totalPages } = getPaginatedRows(filteredAssignments, state);
-
-            userAssignmentsSummary.textContent = summary;
-            renderPaginationControls(userAssignmentsPagination, state.page, totalPages);
-            userAssignmentsTableBody.innerHTML = filteredAssignments.length === 0
-                ? `<tr><td colspan="5"><div class="empty-state">${assignments.length === 0 ? 'Este usuario aún no tiene cuentas asignadas.' : 'No hay cuentas que coincidan con los filtros actuales.'}</div></td></tr>`
-                : paginatedRows.map((assignment) => `
-                    <tr>
-                        <td>${escapeHtml(assignment.service_name)}</td>
-                        <td>${escapeHtml(assignment.account_email)}</td>
-                        <td>${escapeHtml(assignment.description || 'Sin descripción')}</td>
-                        <td>${escapeHtml(assignment.account_password)}</td>
-                        <td>
-                            <button class="btn btn-sm btn-outline-danger" type="button" data-unassign-user-assignment="${assignment.assignment_id}">Desafiliar</button>
-                        </td>
-                    </tr>
-                `).join('');
+            renderUserAssignmentsTable(user);
         }
     });
 
@@ -5666,6 +5739,21 @@ header('Expires: 0');
     serviceAssignUsersTableBody.addEventListener('click', async (event) => {
         const assignButton = event.target.closest('[data-assign-user-id]');
         const unassignButton = event.target.closest('[data-unassign-service-modal]');
+        const viewAssignmentsButton = event.target.closest('[data-view-user-assignments-inline]');
+
+        if (viewAssignmentsButton) {
+            const serviceId = appState.selectedAssignServiceId;
+
+            appState.resumeServiceAssignContext = serviceId === null
+                ? null
+                : {
+                    serviceId,
+                    selectedAccountId: String(serviceAssignAccountSelect.value || ''),
+                };
+            appState.pendingUserAssignmentsUserId = Number(viewAssignmentsButton.dataset.viewUserAssignmentsInline);
+            serviceAssignUsersModal.hide();
+            return;
+        }
 
         if (unassignButton) {
             const serviceId = appState.selectedAssignServiceId;
