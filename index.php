@@ -1920,7 +1920,13 @@ header('Expires: 0');
                                         <h2 class="section-title mb-0">Asignar cuentas por servicio</h2>
                                         <p class="section-subtitle mb-0">Revisa los usuarios asignados por servicio y abre un modal para asignarlos a cualquiera de sus cuentas disponibles.</p>
                                     </div>
-                                    <span id="assignmentServiceCountBadge" class="badge text-bg-secondary rounded-pill"></span>
+                                    <div class="d-flex gap-2 align-items-center flex-wrap justify-content-end">
+                                        <button id="openAssignmentImportButton" class="btn btn-outline-success" type="button">
+                                            <i class="bi bi-file-earmark-arrow-up"></i>
+                                            Importar Asignaciones
+                                        </button>
+                                        <span id="assignmentServiceCountBadge" class="badge text-bg-secondary rounded-pill"></span>
+                                    </div>
                                 </div>
 
                                 <div class="data-table-wrapper">
@@ -2374,6 +2380,12 @@ header('Expires: 0');
                             Descargar Layout
                         </a>
                     </div>
+                    <div id="importModalGuide" class="col-12 d-none">
+                        <div class="inline-card">
+                            <h3 class="h6 mb-2">Guía de llenado</h3>
+                            <ul id="importModalGuideList" class="mb-0 ps-3"></ul>
+                        </div>
+                    </div>
                     <div class="col-12">
                         <label class="form-label" for="importModalFile">Archivo XLSX</label>
                         <input class="form-control" type="file" id="importModalFile" name="archivo" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required>
@@ -2650,6 +2662,7 @@ header('Expires: 0');
 
     const serviceAssignmentsTableBody = document.getElementById('serviceAssignmentsTableBody');
     const assignmentServiceCountBadge = document.getElementById('assignmentServiceCountBadge');
+    const openAssignmentImportButton = document.getElementById('openAssignmentImportButton');
     const mailConfigForm = document.getElementById('mailConfigForm');
     const mailConfigMailbox = document.getElementById('mailConfigMailbox');
     const mailConfigUser = document.getElementById('mailConfigUser');
@@ -2761,6 +2774,8 @@ header('Expires: 0');
     const importModalForm = document.getElementById('importModalForm');
     const importModalExpectedHeaders = document.getElementById('importModalExpectedHeaders');
     const importModalLayoutLink = document.getElementById('importModalLayoutLink');
+    const importModalGuide = document.getElementById('importModalGuide');
+    const importModalGuideList = document.getElementById('importModalGuideList');
     const importModalFile = document.getElementById('importModalFile');
     const importModalStatus = document.getElementById('importModalStatus');
     const importModalProgressWrapper = document.getElementById('importModalProgressWrapper');
@@ -2871,6 +2886,21 @@ header('Expires: 0');
             buttonLabel: 'Importar Cuentas de Usuario',
             previewAction: 'preview_users',
             headers: ['Nombre', 'Usuario', 'Correo', 'Clave', 'Teléfono'],
+        },
+        assignments: {
+            title: 'Importar Asignaciones de Cuentas',
+            subtitle: 'Carga un archivo XLSX para asignar cuentas existentes a usuarios ya registrados usando el ID del servicio, el correo de la cuenta y el correo del usuario.',
+            layoutHref: './assets/layouts/ImportAsignaciones.xlsx',
+            buttonLabel: 'Importar Asignaciones',
+            previewAction: 'preview_assignments',
+            headers: ['ID Servicio', 'Correo del Servicio', 'Correo de Usuario'],
+            guideItems: [
+                'En la primera columna coloca el ID del servicio exactamente como existe en el sistema.',
+                'En la segunda columna coloca el correo de la cuenta del servicio que será asignada dentro de ese mismo servicio.',
+                'En la tercera columna coloca el correo del usuario registrado que recibirá la asignación.',
+                'Cada fila representa una sola asignación. Si quieres asignar la misma cuenta a varios usuarios, repite la cuenta en varias filas.',
+                'No cambies el orden ni los nombres de los encabezados del layout. El archivo debe guardarse en formato XLSX.',
+            ],
         },
     };
 
@@ -4225,6 +4255,8 @@ header('Expires: 0');
         importModalForm.reset();
         importModalStatus.className = 'alert alert-secondary import-status';
         importModalStatus.textContent = 'Carga un archivo XLSX y presiona importar.';
+        importModalGuide.classList.add('d-none');
+        importModalGuideList.innerHTML = '';
         importModalProgressWrapper.classList.add('d-none');
         importModalResults.classList.add('d-none');
         importModalErrorsList.innerHTML = '';
@@ -4316,6 +4348,10 @@ header('Expires: 0');
         importModalExpectedHeaders.textContent = config.headers.join(' | ');
         importModalLayoutLink.href = config.layoutHref;
         importModalSubmitButton.textContent = config.buttonLabel;
+        if (Array.isArray(config.guideItems) && config.guideItems.length > 0) {
+            importModalGuideList.innerHTML = config.guideItems.map((item) => `<li>${escapeHtml(item)}</li>`).join('');
+            importModalGuide.classList.remove('d-none');
+        }
         importModal.show();
     }
 
@@ -5395,6 +5431,10 @@ header('Expires: 0');
 
     openServiceImportButton.addEventListener('click', () => {
         openImportModal({ mode: 'services' });
+    });
+
+    openAssignmentImportButton.addEventListener('click', () => {
+        openImportModal({ mode: 'assignments' });
     });
 
     importModalForm.addEventListener('submit', async (event) => {

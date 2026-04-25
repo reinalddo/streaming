@@ -63,6 +63,34 @@ function importPreviewRegisteredUsers(array $file): array
     ];
 }
 
+function importPreviewServiceAssignments(array $file): array
+{
+    requireAdminUser();
+
+    $rows = readImportWorksheetRows($file);
+    $expectedHeaders = ['ID Servicio', 'Correo del Servicio', 'Correo de Usuario'];
+    validateImportHeaders($rows, $expectedHeaders);
+    $preparedRows = normalizeImportRows(array_slice($rows, 1), count($expectedHeaders));
+
+    if ($preparedRows === []) {
+        return ['success' => false, 'message' => 'El archivo no contiene filas de datos para importar.'];
+    }
+
+    $importKey = storePreparedImport([
+        'mode' => 'assignments',
+        'headers' => $expectedHeaders,
+        'rows' => $preparedRows,
+    ]);
+
+    return [
+        'success' => true,
+        'message' => 'Archivo validado correctamente. La importación puede comenzar.',
+        'import_key' => $importKey,
+        'total_rows' => count($preparedRows),
+        'expected_headers' => $expectedHeaders,
+    ];
+}
+
 function processPreparedImport(string $importKey): array
 {
     requireAdminUser();
@@ -94,6 +122,9 @@ function processPreparedImport(string $importKey): array
     $accountUpdateStatement = null;
     $userDuplicateStatement = null;
     $userInsertStatement = null;
+    $assignmentUserLookupStatement = null;
+    $assignmentInsertStatement = null;
+    $assignmentLookupStatement = null;
 
     if (($payload['mode'] ?? '') === 'services') {
         $serviceLookupStatement = $pdo->prepare('SELECT id FROM servicios WHERE id = :id LIMIT 1');
@@ -107,6 +138,14 @@ function processPreparedImport(string $importKey): array
         $userInsertStatement = $pdo->prepare('INSERT INTO usuarios (nombre, apellido, username, email, telefono, password_hash, role, activo) VALUES (:nombre, :apellido, :username, :email, :telefono, :password_hash, :role, :activo)');
     }
 
+    if (($payload['mode'] ?? '') === 'assignments') {
+        $serviceLookupStatement = $pdo->prepare('SELECT id FROM servicios WHERE id = :id LIMIT 1');
+        $accountLookupStatement = $pdo->prepare('SELECT id FROM cuentas_servicio WHERE servicio_id = :servicio_id AND correo_acceso = :correo_acceso LIMIT 1');
+        $assignmentUserLookupStatement = $pdo->prepare("SELECT id FROM usuarios WHERE role = 'usuario' AND email = :email LIMIT 1");
+        $assignmentLookupStatement = $pdo->prepare('SELECT id FROM usuario_cuentas_servicio WHERE usuario_id = :usuario_id AND cuenta_servicio_id = :cuenta_servicio_id LIMIT 1');
+        $assignmentInsertStatement = $pdo->prepare('INSERT INTO usuario_cuentas_servicio (usuario_id, cuenta_servicio_id) VALUES (:usuario_id, :cuenta_servicio_id)');
+    }
+
     for ($index = $start; $index < $end; $index++) {
         $row = $payload['rows'][$index] ?? [];
         $excelRowNumber = $index + 2;
@@ -115,6 +154,8 @@ function processPreparedImport(string $importKey): array
             processPreparedServiceImportRow($payload, $row, $excelRowNumber, $serviceLookupStatement, $accountLookupStatement, $accountUpdateStatement, $accountStatement);
         } elseif (($payload['mode'] ?? '') === 'users') {
             processPreparedUserImportRow($payload, $row, $excelRowNumber, $userDuplicateStatement, $userInsertStatement);
+        } elseif (($payload['mode'] ?? '') === 'assignments') {
+            processPreparedAssignmentImportRow($payload, $row, $excelRowNumber, $serviceLookupStatement, $accountLookupStatement, $assignmentUserLookupStatement, $assignmentLookupStatement, $assignmentInsertStatement);
         } else {
             return ['success' => false, 'message' => 'El tipo de importación no es compatible.'];
         }
@@ -622,6 +663,89 @@ function processPreparedUserImportRow(array &$payload, array $row, int $excelRow
     $payload['inserted_count'] = (int) ($payload['inserted_count'] ?? 0) + 1;
 }
 
+function processPreparedAssignmentImportRow(
+    array &$payload,
+    array $row,
+    int $excelRowNumber,
+    PDOStatement $serviceLookupStatement,
+    PDOStatement $accountLookupStatement,
+    PDOStatement $userLookupStatement,
+    PDOStatement $assignmentLookupStatement,
+    PDOStatement $assignmentInsertStatement
+): void
+{
+    $serviceId = (int) ($row[0] ?? 0);
+    $serviceAccountEmail = strtolower(trim((string) ($row[1] ?? '')));
+    $userEmail = strtolower(trim((string) ($row[2] ?? '')));
+
+    if ($serviceId <= 0) {
+        registerPreparedImportError($payload, $excelRowNumber, 'El ID del servicio no es válido.');
+        return;
+    }
+
+    $serviceLookupStatement->execute(['id' => $serviceId]);
+    if ($serviceLookupStatement->fetch() === false) {
+        registerPreparedImportError($payload, $excelRowNumber, sprintf('El servicio con ID %d no existe.', $serviceId));
+        return;
+    }
+
+    if ($serviceAccountEmail === '' || !filter_var($serviceAccountEmail, FILTER_VALIDATE_EMAIL)) {
+        registerPreparedImportError($payload, $excelRowNumber, 'El correo del servicio no es válido.');
+        return;
+    }
+
+    if ($userEmail === '' || !filter_var($userEmail, FILTER_VALIDATE_EMAIL)) {
+        registerPreparedImportError($payload, $excelRowNumber, 'El correo del usuario no es válido.');
+        return;
+    }
+
+    $accountLookupStatement->execute([
+        'servicio_id' => $serviceId,
+        'correo_acceso' => $serviceAccountEmail,
+    ]);
+    $serviceAccount = $accountLookupStatement->fetch();
+
+    if ($serviceAccount === false) {
+        registerPreparedImportError($payload, $excelRowNumber, sprintf('No existe una cuenta del servicio %d con el correo %s.', $serviceId, $serviceAccountEmail));
+        return;
+    }
+
+    $userLookupStatement->execute(['email' => $userEmail]);
+    $user = $userLookupStatement->fetch();
+
+    if ($user === false) {
+        registerPreparedImportError($payload, $excelRowNumber, sprintf('No existe un usuario registrado con el correo %s.', $userEmail));
+        return;
+    }
+
+    $assignmentLookupStatement->execute([
+        'usuario_id' => (int) $user['id'],
+        'cuenta_servicio_id' => (int) $serviceAccount['id'],
+    ]);
+
+    if ($assignmentLookupStatement->fetch() !== false) {
+        $payload['skipped_existing_count'] = (int) ($payload['skipped_existing_count'] ?? 0) + 1;
+        registerPreparedImportNotice($payload, $excelRowNumber, sprintf('La asignación entre %s y %s ya existía y fue omitida.', $serviceAccountEmail, $userEmail));
+        return;
+    }
+
+    try {
+        $assignmentInsertStatement->execute([
+            'usuario_id' => (int) $user['id'],
+            'cuenta_servicio_id' => (int) $serviceAccount['id'],
+        ]);
+        $payload['inserted_count'] = (int) ($payload['inserted_count'] ?? 0) + 1;
+    } catch (PDOException $exception) {
+        if ($exception->getCode() === '23000') {
+            $payload['skipped_existing_count'] = (int) ($payload['skipped_existing_count'] ?? 0) + 1;
+            registerPreparedImportNotice($payload, $excelRowNumber, sprintf('La asignación entre %s y %s ya existía y fue omitida.', $serviceAccountEmail, $userEmail));
+            return;
+        }
+
+        throw $exception;
+    }
+}
+
 function splitImportedFullName(string $fullName): array
 {
     $normalized = preg_replace('/\s+/u', ' ', trim($fullName));
@@ -697,7 +821,11 @@ function buildPreparedImportMessage(array $payload): string
     $skippedExistingCount = (int) ($payload['skipped_existing_count'] ?? 0);
     $errorCount = (int) ($payload['error_count'] ?? 0);
     $mode = (string) ($payload['mode'] ?? '');
-    $subject = $mode === 'services' ? 'cuentas del servicio' : 'usuarios registrados';
+    $subject = match ($mode) {
+        'services' => 'cuentas del servicio',
+        'assignments' => 'asignaciones',
+        default => 'usuarios registrados',
+    };
     $summaryParts = [sprintf('Se registraron %d %s.', $insertedCount, $subject)];
 
     if ($mode === 'services' && $updatedCount > 0) {
@@ -706,6 +834,10 @@ function buildPreparedImportMessage(array $payload): string
 
     if ($mode === 'users' && $skippedExistingCount > 0) {
         $summaryParts[] = sprintf('Se omitieron %d registro(s) porque el usuario o correo ya existía.', $skippedExistingCount);
+    }
+
+    if ($mode === 'assignments' && $skippedExistingCount > 0) {
+        $summaryParts[] = sprintf('Se omitieron %d asignación(es) porque ya existían.', $skippedExistingCount);
     }
 
     if ($errorCount > 0) {

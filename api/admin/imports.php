@@ -19,6 +19,8 @@ try {
         $result = importPreviewServiceAccounts($_FILES['archivo'] ?? []);
     } elseif ($action === 'preview_users') {
         $result = importPreviewRegisteredUsers($_FILES['archivo'] ?? []);
+    } elseif ($action === 'preview_assignments') {
+        $result = importPreviewServiceAssignments($_FILES['archivo'] ?? []);
     } elseif ($action === 'process') {
         $result = processPreparedImport((string) ($_POST['import_key'] ?? ''));
     } else {
