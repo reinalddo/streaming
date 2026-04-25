@@ -213,13 +213,15 @@ header('Expires: 0');
         }
 
         .topbar-identity-chip {
-            gap: 0.65rem;
+            gap: 0.55rem;
             max-width: 22rem;
+            min-height: 48px;
+            padding: 0.3rem 0.9rem 0.3rem 0.32rem;
         }
 
         .topbar-avatar {
-            width: 30px;
-            height: 30px;
+            width: 42px;
+            height: 42px;
             border-radius: 999px;
             overflow: hidden;
             display: inline-flex;
@@ -238,7 +240,7 @@ header('Expires: 0');
         }
 
         .topbar-avatar-fallback {
-            font-size: 0.82rem;
+            font-size: 1rem;
             font-weight: 700;
             color: #fff;
         }
@@ -1254,6 +1256,16 @@ header('Expires: 0');
             .topbar-chip {
                 min-height: 40px;
                 padding: 0.58rem 0.82rem;
+            }
+
+            .topbar-identity-chip {
+                min-height: 44px;
+                padding: 0.2rem 0.78rem 0.2rem 0.24rem;
+            }
+
+            .topbar-avatar {
+                width: 38px;
+                height: 38px;
             }
 
             .gallery-slide-caption {
