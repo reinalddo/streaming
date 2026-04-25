@@ -5,6 +5,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/session.php';
 require_once __DIR__ . '/mail.php';
+require_once __DIR__ . '/user_profile.php';
 
 function requireRegisteredUser(): array
 {
@@ -21,8 +22,9 @@ function getCurrentUserModuleOverview(): array
 {
     $authenticatedUser = requireRegisteredUser();
     $pdo = getPdo();
+    ensureUserProfileColumns($pdo);
 
-    $userStmt = $pdo->prepare("SELECT id, nombre, apellido, username, email, telefono, activo FROM usuarios WHERE id = :id AND role = 'usuario' LIMIT 1");
+    $userStmt = $pdo->prepare("SELECT id, nombre, apellido, username, email, telefono, nombre_tienda, facebook, instagram, tiktok, whatsapp, telegram, foto_perfil_url, activo FROM usuarios WHERE id = :id AND role = 'usuario' LIMIT 1");
     $userStmt->execute(['id' => $authenticatedUser['id']]);
     $user = $userStmt->fetch();
 
@@ -55,7 +57,8 @@ function searchUserInformationByEmail(array $input): array
     }
 
     $pdo = getPdo();
-    $userStmt = $pdo->prepare("SELECT id, nombre, apellido, username, email, telefono, activo FROM usuarios WHERE id = :id AND role = 'usuario' LIMIT 1");
+    ensureUserProfileColumns($pdo);
+    $userStmt = $pdo->prepare("SELECT id, nombre, apellido, username, email, telefono, nombre_tienda, facebook, instagram, tiktok, whatsapp, telegram, foto_perfil_url, activo FROM usuarios WHERE id = :id AND role = 'usuario' LIMIT 1");
     $userStmt->execute(['id' => $authenticatedUser['id']]);
     $user = $userStmt->fetch();
 
@@ -108,7 +111,7 @@ function fetchUserMailboxMessage(array $input): array
     ];
 }
 
-function updateCurrentUserProfile(array $input): array
+function updateCurrentUserProfile(array $input, array $files = []): array
 {
     $authenticatedUser = requireRegisteredUser();
     $name = trim((string) ($input['nombre'] ?? ''));
@@ -116,8 +119,9 @@ function updateCurrentUserProfile(array $input): array
     $username = trim((string) ($input['username'] ?? ''));
     $email = strtolower(trim((string) ($input['email'] ?? '')));
     $phone = trim((string) ($input['telefono'] ?? ''));
+    $extraProfileData = normalizeUserExtraProfileInput($input);
 
-    if ($name === '' || $lastName === '' || $username === '' || $email === '') {
+    if ($name === '' || $lastName === '' || $username === '' || $email === '' || $phone === '') {
         return ['success' => false, 'message' => 'Completa los datos obligatorios.'];
     }
 
@@ -126,6 +130,7 @@ function updateCurrentUserProfile(array $input): array
     }
 
     $pdo = getPdo();
+    ensureUserProfileColumns($pdo);
     $dupStmt = $pdo->prepare('SELECT id FROM usuarios WHERE (email = :email OR username = :username) AND id <> :id LIMIT 1');
     $dupStmt->execute([
         'email' => $email,
@@ -137,15 +142,38 @@ function updateCurrentUserProfile(array $input): array
         return ['success' => false, 'message' => 'Ese correo o usuario ya pertenece a otra cuenta.'];
     }
 
-    $updateStmt = $pdo->prepare("UPDATE usuarios SET nombre = :nombre, apellido = :apellido, username = :username, email = :email, telefono = :telefono WHERE id = :id AND role = 'usuario'");
-    $updateStmt->execute([
-        'nombre' => $name,
-        'apellido' => $lastName,
-        'username' => $username,
-        'email' => $email,
-        'telefono' => $phone !== '' ? $phone : null,
-        'id' => $authenticatedUser['id'],
-    ]);
+    $currentUserStmt = $pdo->prepare("SELECT foto_perfil_url FROM usuarios WHERE id = :id AND role = 'usuario' LIMIT 1");
+    $currentUserStmt->execute(['id' => $authenticatedUser['id']]);
+    $currentUser = $currentUserStmt->fetch();
+    $newProfilePhotoPath = uploadUserProfilePhoto($files['foto_perfil'] ?? null);
+    $finalPhotoPath = $newProfilePhotoPath ?? (($currentUser['foto_perfil_url'] ?? null) !== null ? (string) $currentUser['foto_perfil_url'] : null);
+
+    $updateStmt = $pdo->prepare("UPDATE usuarios SET nombre = :nombre, apellido = :apellido, username = :username, email = :email, telefono = :telefono, nombre_tienda = :nombre_tienda, facebook = :facebook, instagram = :instagram, tiktok = :tiktok, whatsapp = :whatsapp, telegram = :telegram, foto_perfil_url = :foto_perfil_url WHERE id = :id AND role = 'usuario'");
+
+    try {
+        $updateStmt->execute([
+            'nombre' => $name,
+            'apellido' => $lastName,
+            'username' => $username,
+            'email' => $email,
+            'telefono' => $phone,
+            'nombre_tienda' => $extraProfileData['nombre_tienda'],
+            'facebook' => $extraProfileData['facebook'],
+            'instagram' => $extraProfileData['instagram'],
+            'tiktok' => $extraProfileData['tiktok'],
+            'whatsapp' => $extraProfileData['whatsapp'],
+            'telegram' => $extraProfileData['telegram'],
+            'foto_perfil_url' => $finalPhotoPath,
+            'id' => $authenticatedUser['id'],
+        ]);
+    } catch (Throwable $exception) {
+        deleteLocalUserProfileAsset($newProfilePhotoPath);
+        throw $exception;
+    }
+
+    if ($newProfilePhotoPath !== null) {
+        deleteLocalUserProfileAsset(($currentUser['foto_perfil_url'] ?? null) !== null ? (string) $currentUser['foto_perfil_url'] : null);
+    }
 
     $updatedUser = [
         'id' => (int) $authenticatedUser['id'],
@@ -154,6 +182,13 @@ function updateCurrentUserProfile(array $input): array
         'username' => $username,
         'email' => $email,
         'role' => 'usuario',
+        'nombre_tienda' => $extraProfileData['nombre_tienda'],
+        'facebook' => $extraProfileData['facebook'],
+        'instagram' => $extraProfileData['instagram'],
+        'tiktok' => $extraProfileData['tiktok'],
+        'whatsapp' => $extraProfileData['whatsapp'],
+        'telegram' => $extraProfileData['telegram'],
+        'foto_perfil_url' => $finalPhotoPath,
     ];
 
     setAuthenticatedUser($updatedUser);
@@ -161,7 +196,7 @@ function updateCurrentUserProfile(array $input): array
     return [
         'success' => true,
         'message' => 'Tus datos fueron actualizados correctamente.',
-        'user' => $updatedUser + ['telefono' => $phone !== '' ? $phone : null, 'activo' => 1],
+        'user' => $updatedUser + ['telefono' => $phone, 'activo' => 1],
         'assignments' => fetchUserAssignments($pdo, (int) $authenticatedUser['id']),
     ];
 }
@@ -193,6 +228,12 @@ function fetchUserAssignments(PDO $pdo, int $userId): array
 
 function normalizeUserProfile(array $user): array
 {
+    $profilePhoto = $user['foto_perfil_url'] !== null ? (string) $user['foto_perfil_url'] : null;
+
+    if ($profilePhoto !== null && !userProfileAssetExists($profilePhoto)) {
+        $profilePhoto = null;
+    }
+
     return [
         'id' => (int) $user['id'],
         'nombre' => (string) $user['nombre'],
@@ -200,6 +241,13 @@ function normalizeUserProfile(array $user): array
         'username' => (string) $user['username'],
         'email' => (string) $user['email'],
         'telefono' => $user['telefono'] !== null ? (string) $user['telefono'] : null,
+        'nombre_tienda' => $user['nombre_tienda'] !== null ? (string) $user['nombre_tienda'] : null,
+        'facebook' => $user['facebook'] !== null ? (string) $user['facebook'] : null,
+        'instagram' => $user['instagram'] !== null ? (string) $user['instagram'] : null,
+        'tiktok' => $user['tiktok'] !== null ? (string) $user['tiktok'] : null,
+        'whatsapp' => $user['whatsapp'] !== null ? (string) $user['whatsapp'] : null,
+        'telegram' => $user['telegram'] !== null ? (string) $user['telegram'] : null,
+        'foto_perfil_url' => $profilePhoto,
         'activo' => (int) $user['activo'],
     ];
 }

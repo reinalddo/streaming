@@ -13,7 +13,7 @@ try {
         exit;
     }
 
-    $result = registerUser($_POST);
+    $result = registerUser($_POST, $_FILES);
     http_response_code($result['success'] ? 200 : 422);
 
     echo json_encode($result, JSON_UNESCAPED_UNICODE);

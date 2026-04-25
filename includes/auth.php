@@ -4,17 +4,21 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/session.php';
+require_once __DIR__ . '/user_profile.php';
 
-function registerUser(array $input): array
+function registerUser(array $input, array $files = []): array
 {
+    ensureUserProfileColumns();
+
     $nombre = trim((string) ($input['nombre'] ?? ''));
     $apellido = trim((string) ($input['apellido'] ?? ''));
     $username = trim((string) ($input['username'] ?? ''));
     $email = strtolower(trim((string) ($input['email'] ?? '')));
     $telefono = trim((string) ($input['telefono'] ?? ''));
     $password = (string) ($input['password'] ?? '');
+    $extraProfileData = normalizeUserExtraProfileInput($input);
 
-    if ($nombre === '' || $apellido === '' || $username === '' || $email === '' || $password === '') {
+    if ($nombre === '' || $apellido === '' || $username === '' || $email === '' || $telefono === '' || $password === '') {
         return ['success' => false, 'message' => 'Completa los campos obligatorios.'];
     }
 
@@ -37,20 +41,34 @@ function registerUser(array $input): array
         return ['success' => false, 'message' => 'El correo o usuario ya se encuentra registrado.'];
     }
 
+    $newProfilePhotoPath = uploadUserProfilePhoto($files['foto_perfil'] ?? null);
+
     $insertStmt = $pdo->prepare(
-        'INSERT INTO usuarios (nombre, apellido, username, email, telefono, password_hash, role, activo) VALUES (:nombre, :apellido, :username, :email, :telefono, :password_hash, :role, :activo)'
+        'INSERT INTO usuarios (nombre, apellido, username, email, telefono, nombre_tienda, facebook, instagram, tiktok, whatsapp, telegram, foto_perfil_url, password_hash, role, activo) VALUES (:nombre, :apellido, :username, :email, :telefono, :nombre_tienda, :facebook, :instagram, :tiktok, :whatsapp, :telegram, :foto_perfil_url, :password_hash, :role, :activo)'
     );
 
-    $insertStmt->execute([
-        'nombre' => $nombre,
-        'apellido' => $apellido,
-        'username' => $username,
-        'email' => $email,
-        'telefono' => $telefono !== '' ? $telefono : null,
-        'password_hash' => password_hash($password, PASSWORD_DEFAULT),
-        'role' => 'usuario',
-        'activo' => 1,
-    ]);
+    try {
+        $insertStmt->execute([
+            'nombre' => $nombre,
+            'apellido' => $apellido,
+            'username' => $username,
+            'email' => $email,
+            'telefono' => $telefono,
+            'nombre_tienda' => $extraProfileData['nombre_tienda'],
+            'facebook' => $extraProfileData['facebook'],
+            'instagram' => $extraProfileData['instagram'],
+            'tiktok' => $extraProfileData['tiktok'],
+            'whatsapp' => $extraProfileData['whatsapp'],
+            'telegram' => $extraProfileData['telegram'],
+            'foto_perfil_url' => $newProfilePhotoPath,
+            'password_hash' => password_hash($password, PASSWORD_DEFAULT),
+            'role' => 'usuario',
+            'activo' => 1,
+        ]);
+    } catch (Throwable $exception) {
+        deleteLocalUserProfileAsset($newProfilePhotoPath);
+        throw $exception;
+    }
 
     $user = [
         'id' => (int) $pdo->lastInsertId(),
@@ -59,6 +77,13 @@ function registerUser(array $input): array
         'username' => $username,
         'email' => $email,
         'role' => 'usuario',
+        'nombre_tienda' => $extraProfileData['nombre_tienda'],
+        'facebook' => $extraProfileData['facebook'],
+        'instagram' => $extraProfileData['instagram'],
+        'tiktok' => $extraProfileData['tiktok'],
+        'whatsapp' => $extraProfileData['whatsapp'],
+        'telegram' => $extraProfileData['telegram'],
+        'foto_perfil_url' => $newProfilePhotoPath,
     ];
 
     setAuthenticatedUser($user);
@@ -73,6 +98,8 @@ function registerUser(array $input): array
 
 function loginUser(array $input): array
 {
+    ensureUserProfileColumns();
+
     $identifier = trim((string) ($input['login'] ?? $input['email'] ?? ''));
     $normalizedEmail = strtolower($identifier);
     $password = (string) ($input['password'] ?? '');
@@ -82,7 +109,7 @@ function loginUser(array $input): array
     }
 
     $pdo = getPdo();
-    $stmt = $pdo->prepare('SELECT id, nombre, apellido, username, email, password_hash, role, activo FROM usuarios WHERE username = :identifier OR email = :email LIMIT 1');
+    $stmt = $pdo->prepare('SELECT id, nombre, apellido, username, email, telefono, nombre_tienda, facebook, instagram, tiktok, whatsapp, telegram, foto_perfil_url, password_hash, role, activo FROM usuarios WHERE username = :identifier OR email = :email LIMIT 1');
     $stmt->execute([
         'identifier' => $identifier,
         'email' => $normalizedEmail,
@@ -110,6 +137,14 @@ function loginUser(array $input): array
             'username' => (string) $user['username'],
             'email' => (string) $user['email'],
             'role' => (string) $user['role'],
+            'telefono' => $user['telefono'] !== null ? (string) $user['telefono'] : null,
+            'nombre_tienda' => $user['nombre_tienda'] !== null ? (string) $user['nombre_tienda'] : null,
+            'facebook' => $user['facebook'] !== null ? (string) $user['facebook'] : null,
+            'instagram' => $user['instagram'] !== null ? (string) $user['instagram'] : null,
+            'tiktok' => $user['tiktok'] !== null ? (string) $user['tiktok'] : null,
+            'whatsapp' => $user['whatsapp'] !== null ? (string) $user['whatsapp'] : null,
+            'telegram' => $user['telegram'] !== null ? (string) $user['telegram'] : null,
+            'foto_perfil_url' => $user['foto_perfil_url'] !== null ? (string) $user['foto_perfil_url'] : null,
         ],
     ];
 }

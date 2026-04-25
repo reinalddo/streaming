@@ -196,6 +196,60 @@ header('Expires: 0');
             max-width: 100%;
         }
 
+        .topbar-social-links {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .topbar-social-link {
+            width: 42px;
+            height: 42px;
+            padding: 0;
+            justify-content: center;
+            text-decoration: none;
+            font-size: 1rem;
+        }
+
+        .topbar-identity-chip {
+            gap: 0.65rem;
+            max-width: 22rem;
+        }
+
+        .topbar-avatar {
+            width: 30px;
+            height: 30px;
+            border-radius: 999px;
+            overflow: hidden;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255, 255, 255, 0.18);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            flex-shrink: 0;
+        }
+
+        .topbar-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        .topbar-avatar-fallback {
+            font-size: 0.82rem;
+            font-weight: 700;
+            color: #fff;
+        }
+
+        .topbar-identity-text {
+            min-width: 0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
         .topbar-hidden {
             display: none !important;
         }
@@ -207,6 +261,51 @@ header('Expires: 0');
 
         .modal-backdrop {
             --bs-backdrop-zindex: 1190;
+        }
+
+        .user-profile-modal-dialog {
+            max-width: min(1120px, calc(100vw - 1.5rem));
+        }
+
+        .user-profile-modal-dialog .modal-content {
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .user-profile-modal-dialog .modal-body {
+            overflow-x: hidden;
+        }
+
+        .field-input-group {
+            flex-wrap: nowrap;
+            width: 100%;
+        }
+
+        .field-input-group .input-group-text {
+            min-width: 46px;
+            flex: 0 0 46px;
+            justify-content: center;
+            color: var(--pc-primary);
+            background: linear-gradient(180deg, rgba(11, 87, 208, 0.12) 0%, rgba(11, 87, 208, 0.06) 100%);
+            border-color: var(--pc-border);
+        }
+
+        .field-input-group .form-control,
+        .field-input-group .form-select {
+            border-left: 0;
+            min-width: 0;
+        }
+
+        .field-input-group .form-control:focus,
+        .field-input-group .form-select:focus {
+            box-shadow: none;
+        }
+
+        .field-input-group:focus-within .input-group-text {
+            border-color: rgba(11, 87, 208, 0.45);
+            color: var(--pc-primary-dark);
+            background: rgba(11, 87, 208, 0.14);
         }
 
         .modal .modal-content {
@@ -1169,6 +1268,42 @@ header('Expires: 0');
                 width: 100%;
                 min-width: 0;
             }
+
+            .user-profile-modal-dialog {
+                max-width: calc(100vw - 0.7rem);
+                margin: 0 auto;
+            }
+
+            .user-profile-modal-dialog .modal-content {
+                max-height: calc(100vh - var(--pc-topbar-height) - 1rem);
+                border-radius: 1rem;
+            }
+
+            .user-profile-modal-dialog .modal-header,
+            .user-profile-modal-dialog .modal-body,
+            .user-profile-modal-dialog .modal-footer {
+                padding-left: 0.9rem;
+                padding-right: 0.9rem;
+            }
+
+            .user-profile-modal-dialog .modal-body {
+                padding-bottom: 1rem;
+            }
+
+            .user-profile-modal-dialog .modal-footer {
+                gap: 0.65rem;
+                justify-content: stretch;
+            }
+
+            .user-profile-modal-dialog .modal-footer .btn {
+                flex: 1 1 0;
+                min-width: 0;
+            }
+
+            .field-input-group .input-group-text {
+                min-width: 42px;
+                flex-basis: 42px;
+            }
         }
     </style>
 </head>
@@ -1192,7 +1327,14 @@ header('Expires: 0');
             </div>
 
             <div id="topbarSessionGroup" class="topbar-session-group topbar-hidden">
-                <div id="topbarIdentity" class="topbar-chip"></div>
+                <div id="topbarSocialLinks" class="topbar-social-links topbar-hidden"></div>
+                <div id="topbarIdentity" class="topbar-chip topbar-identity-chip">
+                    <span class="topbar-avatar">
+                        <img id="topbarUserAvatarImage" src="" alt="Foto de perfil" class="topbar-hidden">
+                        <span id="topbarUserAvatarFallback" class="topbar-avatar-fallback">P</span>
+                    </span>
+                    <span id="topbarIdentityText" class="topbar-identity-text"></span>
+                </div>
                 <button id="topbarSettingsButton" class="btn topbar-chip topbar-icon-button" type="button" aria-label="Configuración">
                     <i class="bi bi-gear-fill"></i>
                 </button>
@@ -1269,7 +1411,7 @@ header('Expires: 0');
                         </div>
 
                         <div class="tab-pane fade" id="register-pane" role="tabpanel" aria-labelledby="register-tab" tabindex="0">
-                            <form id="registerForm" class="row g-3" novalidate>
+                            <form id="registerForm" class="row g-3" novalidate enctype="multipart/form-data">
                                 <div class="col-12 col-md-6">
                                     <label class="form-label" for="registerNombre">Nombre</label>
                                     <input class="form-control" type="text" id="registerNombre" name="nombre" placeholder="Tu nombre" required>
@@ -1284,11 +1426,39 @@ header('Expires: 0');
                                 </div>
                                 <div class="col-12 col-md-6">
                                     <label class="form-label" for="registerTelefono">Teléfono</label>
-                                    <input class="form-control" type="text" id="registerTelefono" name="telefono" placeholder="Opcional">
+                                    <input class="form-control" type="text" id="registerTelefono" name="telefono" placeholder="Tu teléfono" required>
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label" for="registerStoreName">Nombre de la tienda</label>
+                                    <input class="form-control" type="text" id="registerStoreName" name="nombre_tienda" placeholder="Opcional">
                                 </div>
                                 <div class="col-12">
                                     <label class="form-label" for="registerEmail">Correo electrónico</label>
                                     <input class="form-control" type="email" id="registerEmail" name="email" placeholder="usuario@dominio.com" required>
+                                </div>
+                                <div class="col-12 col-md-6 col-xl-4">
+                                    <label class="form-label" for="registerFacebook">Facebook</label>
+                                    <input class="form-control" type="text" id="registerFacebook" name="facebook" placeholder="Usuario o URL opcional">
+                                </div>
+                                <div class="col-12 col-md-6 col-xl-4">
+                                    <label class="form-label" for="registerInstagram">Instagram</label>
+                                    <input class="form-control" type="text" id="registerInstagram" name="instagram" placeholder="Usuario o URL opcional">
+                                </div>
+                                <div class="col-12 col-md-6 col-xl-4">
+                                    <label class="form-label" for="registerTiktok">TikTok</label>
+                                    <input class="form-control" type="text" id="registerTiktok" name="tiktok" placeholder="Usuario o URL opcional">
+                                </div>
+                                <div class="col-12 col-md-6 col-xl-6">
+                                    <label class="form-label" for="registerWhatsapp">WhatsApp</label>
+                                    <input class="form-control" type="text" id="registerWhatsapp" name="whatsapp" placeholder="Número o URL opcional">
+                                </div>
+                                <div class="col-12 col-md-6 col-xl-6">
+                                    <label class="form-label" for="registerTelegram">Telegram</label>
+                                    <input class="form-control" type="text" id="registerTelegram" name="telegram" placeholder="Usuario o URL opcional">
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label" for="registerProfilePhoto">Foto de perfil</label>
+                                    <input class="form-control" type="file" id="registerProfilePhoto" name="foto_perfil" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml">
                                 </div>
                                 <div class="col-12">
                                     <label class="form-label" for="registerPassword">Clave</label>
@@ -1570,7 +1740,7 @@ header('Expires: 0');
                                         <h3 class="h6 mb-0">Registrar usuario desde administración</h3>
                                         <button id="cancelCreateUserButton" class="btn btn-sm btn-outline-secondary" type="button">Cancelar</button>
                                     </div>
-                                    <form id="adminCreateUserForm" class="row g-3" novalidate>
+                                    <form id="adminCreateUserForm" class="row g-3" novalidate enctype="multipart/form-data">
                                         <div class="col-12 col-md-6 col-xl-3">
                                             <label class="form-label" for="adminCreateUserNombre">Nombre</label>
                                             <input class="form-control" type="text" id="adminCreateUserNombre" name="nombre" required>
@@ -1589,7 +1759,11 @@ header('Expires: 0');
                                         </div>
                                         <div class="col-12 col-md-6 col-xl-4">
                                             <label class="form-label" for="adminCreateUserPhone">Teléfono</label>
-                                            <input class="form-control" type="text" id="adminCreateUserPhone" name="telefono">
+                                            <input class="form-control" type="text" id="adminCreateUserPhone" name="telefono" required>
+                                        </div>
+                                        <div class="col-12 col-md-6 col-xl-4">
+                                            <label class="form-label" for="adminCreateUserStoreName">Nombre de la tienda</label>
+                                            <input class="form-control" type="text" id="adminCreateUserStoreName" name="nombre_tienda">
                                         </div>
                                         <div class="col-12 col-md-6 col-xl-4">
                                             <label class="form-label" for="adminCreateUserPassword">Clave</label>
@@ -1600,6 +1774,30 @@ header('Expires: 0');
                                                 </button>
                                             </div>
                                         </div>
+                                        <div class="col-12 col-md-6 col-xl-4">
+                                            <label class="form-label" for="adminCreateUserFacebook">Facebook</label>
+                                            <input class="form-control" type="text" id="adminCreateUserFacebook" name="facebook">
+                                        </div>
+                                        <div class="col-12 col-md-6 col-xl-4">
+                                            <label class="form-label" for="adminCreateUserInstagram">Instagram</label>
+                                            <input class="form-control" type="text" id="adminCreateUserInstagram" name="instagram">
+                                        </div>
+                                        <div class="col-12 col-md-6 col-xl-4">
+                                            <label class="form-label" for="adminCreateUserTiktok">TikTok</label>
+                                            <input class="form-control" type="text" id="adminCreateUserTiktok" name="tiktok">
+                                        </div>
+                                        <div class="col-12 col-md-6 col-xl-6">
+                                            <label class="form-label" for="adminCreateUserWhatsapp">WhatsApp</label>
+                                            <input class="form-control" type="text" id="adminCreateUserWhatsapp" name="whatsapp">
+                                        </div>
+                                        <div class="col-12 col-md-6 col-xl-6">
+                                            <label class="form-label" for="adminCreateUserTelegram">Telegram</label>
+                                            <input class="form-control" type="text" id="adminCreateUserTelegram" name="telegram">
+                                        </div>
+                                        <div class="col-12 col-xl-6">
+                                            <label class="form-label" for="adminCreateUserProfilePhoto">Foto de perfil</label>
+                                            <input class="form-control" type="file" id="adminCreateUserProfilePhoto" name="foto_perfil" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml">
+                                        </div>
                                         <div class="col-12 d-grid d-lg-flex justify-content-lg-end">
                                             <button class="btn btn-primary" type="submit">Guardar usuario</button>
                                         </div>
@@ -1608,7 +1806,7 @@ header('Expires: 0');
 
                                 <div class="table-toolbar mb-3">
                                     <div class="d-flex gap-2 flex-wrap align-items-center">
-                                        <input class="form-control" type="search" id="registeredUsersSearchInput" placeholder="Buscar por nombre, usuario, correo, teléfono o estado">
+                                        <input class="form-control" type="search" id="registeredUsersSearchInput" placeholder="Buscar por tienda, nombre, usuario, correo, teléfono o estado">
                                     </div>
                                     <div class="d-flex gap-2 align-items-center flex-wrap">
                                         <label class="small text-secondary" for="registeredUsersPageSize">Filas por página</label>
@@ -1627,7 +1825,7 @@ header('Expires: 0');
                                         <table class="table table-hover align-middle mb-0">
                                             <thead>
                                                 <tr>
-                                                    <th>Nombre</th>
+                                                    <th>Tienda / Usuario</th>
                                                     <th>Usuario</th>
                                                     <th>Correo</th>
                                                     <th>Teléfono</th>
@@ -1650,7 +1848,7 @@ header('Expires: 0');
                                         <h3 class="h6 mb-0">Editar usuario</h3>
                                         <button id="cancelUserEditButton" class="btn btn-sm btn-outline-secondary" type="button">Cancelar</button>
                                     </div>
-                                    <form id="userEditForm" class="row g-3" novalidate>
+                                    <form id="userEditForm" class="row g-3" novalidate enctype="multipart/form-data">
                                         <input type="hidden" id="editUserId" name="usuario_id">
                                         <div class="col-12 col-md-6 col-xl-3">
                                             <label class="form-label" for="editUserNombre">Nombre</label>
@@ -1670,7 +1868,11 @@ header('Expires: 0');
                                         </div>
                                         <div class="col-12 col-md-6 col-xl-3">
                                             <label class="form-label" for="editUserPhone">Teléfono</label>
-                                            <input class="form-control" type="text" id="editUserPhone" name="telefono">
+                                            <input class="form-control" type="text" id="editUserPhone" name="telefono" required>
+                                        </div>
+                                        <div class="col-12 col-md-6 col-xl-3">
+                                            <label class="form-label" for="editUserStoreName">Nombre de la tienda</label>
+                                            <input class="form-control" type="text" id="editUserStoreName" name="nombre_tienda">
                                         </div>
                                         <div class="col-12 col-md-6 col-xl-3">
                                             <label class="form-label" for="editUserActive">Estado</label>
@@ -1678,6 +1880,30 @@ header('Expires: 0');
                                                 <option value="1">Activo</option>
                                                 <option value="0">Inactivo</option>
                                             </select>
+                                        </div>
+                                        <div class="col-12 col-md-6 col-xl-4">
+                                            <label class="form-label" for="editUserFacebook">Facebook</label>
+                                            <input class="form-control" type="text" id="editUserFacebook" name="facebook">
+                                        </div>
+                                        <div class="col-12 col-md-6 col-xl-4">
+                                            <label class="form-label" for="editUserInstagram">Instagram</label>
+                                            <input class="form-control" type="text" id="editUserInstagram" name="instagram">
+                                        </div>
+                                        <div class="col-12 col-md-6 col-xl-4">
+                                            <label class="form-label" for="editUserTiktok">TikTok</label>
+                                            <input class="form-control" type="text" id="editUserTiktok" name="tiktok">
+                                        </div>
+                                        <div class="col-12 col-md-6 col-xl-6">
+                                            <label class="form-label" for="editUserWhatsapp">WhatsApp</label>
+                                            <input class="form-control" type="text" id="editUserWhatsapp" name="whatsapp">
+                                        </div>
+                                        <div class="col-12 col-md-6 col-xl-6">
+                                            <label class="form-label" for="editUserTelegram">Telegram</label>
+                                            <input class="form-control" type="text" id="editUserTelegram" name="telegram">
+                                        </div>
+                                        <div class="col-12 col-xl-6">
+                                            <label class="form-label" for="editUserProfilePhoto">Foto de perfil</label>
+                                            <input class="form-control" type="file" id="editUserProfilePhoto" name="foto_perfil" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml">
                                         </div>
                                         <div class="col-12 d-grid d-lg-flex justify-content-lg-end gap-2">
                                             <button class="btn btn-primary" type="submit">Guardar cambios</button>
@@ -1943,7 +2169,7 @@ header('Expires: 0');
             <div class="modal-body">
                 <div class="table-toolbar mb-3">
                     <div class="d-flex gap-2 flex-wrap align-items-center">
-                        <input class="form-control" type="search" id="assignedUsersSearchInput" placeholder="Buscar por nombre, usuario o correo">
+                        <input class="form-control" type="search" id="assignedUsersSearchInput" placeholder="Buscar por tienda, usuario o correo">
                     </div>
                     <div class="d-flex gap-2 align-items-center flex-wrap">
                         <label class="small text-secondary" for="assignedUsersPageSize">Filas por página</label>
@@ -1961,7 +2187,7 @@ header('Expires: 0');
                         <table class="table table-hover align-middle mb-0">
                             <thead>
                                 <tr>
-                                    <th>Nombre</th>
+                                    <th>Tienda / Usuario</th>
                                     <th>Usuario</th>
                                     <th>Correo</th>
                                     <th>Acciones</th>
@@ -2050,7 +2276,7 @@ header('Expires: 0');
                         </div>
                         <div class="col-12 col-lg-4">
                             <label class="form-label" for="serviceAssignUserSearchInput">Buscar usuario</label>
-                            <input class="form-control" type="search" id="serviceAssignUserSearchInput" placeholder="Nombre, usuario, correo o asignación">
+                            <input class="form-control" type="search" id="serviceAssignUserSearchInput" placeholder="Tienda, usuario, correo o asignación">
                         </div>
                         <div class="col-12 col-lg-2">
                             <label class="form-label" for="serviceAssignUsersPageSize">Filas por página</label>
@@ -2071,7 +2297,7 @@ header('Expires: 0');
                         <table class="table table-hover align-middle mb-0">
                             <thead>
                                 <tr>
-                                    <th>Nombre</th>
+                                    <th>Tienda / Usuario</th>
                                     <th>Usuario</th>
                                     <th>Correo</th>
                                     <th>Cuentas asignadas</th>
@@ -2222,7 +2448,7 @@ header('Expires: 0');
 </div>
 
 <div class="modal fade" id="userProfileModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-xl user-profile-modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
                 <div>
@@ -2232,26 +2458,91 @@ header('Expires: 0');
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
             </div>
             <div class="modal-body">
-                <form id="userProfileForm" class="row g-3" novalidate>
+                <form id="userProfileForm" class="row g-3" novalidate enctype="multipart/form-data">
                     <div class="col-12 col-md-6">
                         <label class="form-label" for="userProfileNombre">Nombre</label>
-                        <input class="form-control" type="text" id="userProfileNombre" name="nombre" required>
+                        <div class="input-group field-input-group">
+                            <span class="input-group-text"><i class="bi bi-person-vcard"></i></span>
+                            <input class="form-control" type="text" id="userProfileNombre" name="nombre" placeholder="Escribe tu nombre" required>
+                        </div>
                     </div>
                     <div class="col-12 col-md-6">
                         <label class="form-label" for="userProfileApellido">Apellido</label>
-                        <input class="form-control" type="text" id="userProfileApellido" name="apellido" required>
+                        <div class="input-group field-input-group">
+                            <span class="input-group-text"><i class="bi bi-person-badge"></i></span>
+                            <input class="form-control" type="text" id="userProfileApellido" name="apellido" placeholder="Escribe tu apellido" required>
+                        </div>
                     </div>
                     <div class="col-12 col-md-6">
                         <label class="form-label" for="userProfileUsername">Usuario</label>
-                        <input class="form-control" type="text" id="userProfileUsername" name="username" required>
+                        <div class="input-group field-input-group">
+                            <span class="input-group-text"><i class="bi bi-at"></i></span>
+                            <input class="form-control" type="text" id="userProfileUsername" name="username" placeholder="Elige tu nombre de usuario" required>
+                        </div>
                     </div>
                     <div class="col-12 col-md-6">
                         <label class="form-label" for="userProfileTelefono">Teléfono</label>
-                        <input class="form-control" type="text" id="userProfileTelefono" name="telefono">
+                        <div class="input-group field-input-group">
+                            <span class="input-group-text"><i class="bi bi-telephone"></i></span>
+                            <input class="form-control" type="text" id="userProfileTelefono" name="telefono" placeholder="Ej: 04141234567" required>
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label" for="userProfileStoreName">Nombre de la tienda</label>
+                        <div class="input-group field-input-group">
+                            <span class="input-group-text"><i class="bi bi-shop"></i></span>
+                            <input class="form-control" type="text" id="userProfileStoreName" name="nombre_tienda" placeholder="Ej: Reboxstore Centro">
+                        </div>
                     </div>
                     <div class="col-12">
                         <label class="form-label" for="userProfileEmail">Correo electrónico</label>
-                        <input class="form-control" type="email" id="userProfileEmail" name="email" required>
+                        <div class="input-group field-input-group">
+                            <span class="input-group-text"><i class="bi bi-envelope"></i></span>
+                            <input class="form-control" type="email" id="userProfileEmail" name="email" placeholder="usuario@dominio.com" required>
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-6 col-xl-4">
+                        <label class="form-label" for="userProfileFacebook">Facebook</label>
+                        <div class="input-group field-input-group">
+                            <span class="input-group-text"><i class="bi bi-facebook"></i></span>
+                            <input class="form-control" type="text" id="userProfileFacebook" name="facebook" placeholder="https://facebook.com/tuusuario">
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-6 col-xl-4">
+                        <label class="form-label" for="userProfileInstagram">Instagram</label>
+                        <div class="input-group field-input-group">
+                            <span class="input-group-text"><i class="bi bi-instagram"></i></span>
+                            <input class="form-control" type="text" id="userProfileInstagram" name="instagram" placeholder="https://instagram.com/tuusuario">
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-6 col-xl-4">
+                        <label class="form-label" for="userProfileTiktok">TikTok</label>
+                        <div class="input-group field-input-group">
+                            <span class="input-group-text"><i class="bi bi-tiktok"></i></span>
+                            <input class="form-control" type="text" id="userProfileTiktok" name="tiktok" placeholder="https://tiktok.com/@tuusuario">
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <label class="form-label" for="userProfileWhatsapp">WhatsApp</label>
+                        <div class="input-group field-input-group">
+                            <span class="input-group-text"><i class="bi bi-whatsapp"></i></span>
+                            <input class="form-control" type="text" id="userProfileWhatsapp" name="whatsapp" placeholder="Ej: 584121234567 o enlace wa.me">
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <label class="form-label" for="userProfileTelegram">Telegram</label>
+                        <div class="input-group field-input-group">
+                            <span class="input-group-text"><i class="bi bi-telegram"></i></span>
+                            <input class="form-control" type="text" id="userProfileTelegram" name="telegram" placeholder="https://t.me/tuusuario">
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label" for="userProfilePhoto">Foto de perfil</label>
+                        <div class="input-group field-input-group">
+                            <span class="input-group-text"><i class="bi bi-camera"></i></span>
+                            <input class="form-control" type="file" id="userProfilePhoto" name="foto_perfil" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml">
+                        </div>
+                        <div class="form-text">Carga una imagen PNG, JPG, WEBP, GIF o SVG para tu perfil.</div>
                     </div>
                 </form>
             </div>
@@ -2280,6 +2571,10 @@ header('Expires: 0');
     const topbarAuthGroup = document.getElementById('topbarAuthGroup');
     const topbarSessionGroup = document.getElementById('topbarSessionGroup');
     const topbarIdentity = document.getElementById('topbarIdentity');
+    const topbarSocialLinks = document.getElementById('topbarSocialLinks');
+    const topbarIdentityText = document.getElementById('topbarIdentityText');
+    const topbarUserAvatarImage = document.getElementById('topbarUserAvatarImage');
+    const topbarUserAvatarFallback = document.getElementById('topbarUserAvatarFallback');
     const topbarSettingsButton = document.getElementById('topbarSettingsButton');
     const topbarLogoutButton = document.getElementById('topbarLogoutButton');
     const topbarLoginButton = document.getElementById('topbarLoginButton');
@@ -2497,7 +2792,14 @@ header('Expires: 0');
     const userProfileApellido = document.getElementById('userProfileApellido');
     const userProfileUsername = document.getElementById('userProfileUsername');
     const userProfileTelefono = document.getElementById('userProfileTelefono');
+    const userProfileStoreName = document.getElementById('userProfileStoreName');
     const userProfileEmail = document.getElementById('userProfileEmail');
+    const userProfileFacebook = document.getElementById('userProfileFacebook');
+    const userProfileInstagram = document.getElementById('userProfileInstagram');
+    const userProfileTiktok = document.getElementById('userProfileTiktok');
+    const userProfileWhatsapp = document.getElementById('userProfileWhatsapp');
+    const userProfileTelegram = document.getElementById('userProfileTelegram');
+    const userProfilePhoto = document.getElementById('userProfilePhoto');
     const saveUserProfileButton = document.getElementById('saveUserProfileButton');
     const userProfileModal = new bootstrap.Modal(userProfileModalElement);
 
@@ -2762,6 +3064,36 @@ header('Expires: 0');
         return sectionLabel ? `${pageName} | ${sectionLabel}` : pageName;
     }
 
+    function getUserDisplayName(user) {
+        const storeName = String(user?.nombre_tienda || '').trim();
+
+        if (storeName !== '') {
+            return storeName;
+        }
+
+        const fullName = [user?.nombre || '', user?.apellido || ''].join(' ').trim();
+
+        if (fullName !== '') {
+            return fullName;
+        }
+
+        return String(user?.username || 'Usuario').trim() || 'Usuario';
+    }
+
+    function getUserAvatarSource(user) {
+        return String(user?.foto_perfil_url || getAdminSettings()?.logo_url || '').trim();
+    }
+
+    function getUserSocialLinks(user) {
+        return [
+            { key: 'facebook', icon: 'bi-facebook', label: 'Facebook', url: user?.facebook || '' },
+            { key: 'instagram', icon: 'bi-instagram', label: 'Instagram', url: user?.instagram || '' },
+            { key: 'tiktok', icon: 'bi-tiktok', label: 'TikTok', url: user?.tiktok || '' },
+            { key: 'whatsapp', icon: 'bi-whatsapp', label: 'WhatsApp', url: user?.whatsapp || '' },
+            { key: 'telegram', icon: 'bi-telegram', label: 'Telegram', url: user?.telegram || '' },
+        ].filter((item) => String(item.url || '').trim() !== '');
+    }
+
     function updateTopbarScrollState() {
         const scrollY = Math.max(0, window.scrollY || window.pageYOffset || 0);
         const progress = Math.min(scrollY / 260, 1);
@@ -2795,17 +3127,44 @@ header('Expires: 0');
         const user = appState.user;
         const isAuthenticated = Boolean(user && user.role);
         const isAdmin = user?.role === 'admin';
+        const displayName = getUserDisplayName(user);
+        const avatarSource = getUserAvatarSource(user);
+        const socialLinks = isAdmin ? [] : getUserSocialLinks(user);
 
         topbarAuthGroup.classList.toggle('topbar-hidden', isAuthenticated);
         topbarSessionGroup.classList.toggle('topbar-hidden', !isAuthenticated);
 
         if (!isAuthenticated) {
-            topbarIdentity.textContent = '';
+            topbarIdentityText.textContent = '';
+            topbarSocialLinks.innerHTML = '';
+            topbarSocialLinks.classList.add('topbar-hidden');
+            topbarUserAvatarImage.src = '';
+            topbarUserAvatarImage.classList.add('topbar-hidden');
+            topbarUserAvatarFallback.textContent = topbarPageName.textContent.slice(0, 1).toUpperCase() || 'P';
+            topbarUserAvatarFallback.classList.remove('topbar-hidden');
             topbarSettingsButton.setAttribute('aria-label', 'Configuración');
             return;
         }
 
-        topbarIdentity.textContent = `${user.nombre || ''} ${user.apellido || ''} · ${user.username || ''}`.trim();
+        topbarIdentityText.textContent = `${displayName} · ${user.username || ''}`.trim();
+
+        if (avatarSource !== '') {
+            topbarUserAvatarImage.src = avatarSource;
+            topbarUserAvatarImage.classList.remove('topbar-hidden');
+            topbarUserAvatarFallback.classList.add('topbar-hidden');
+        } else {
+            topbarUserAvatarImage.src = '';
+            topbarUserAvatarImage.classList.add('topbar-hidden');
+            topbarUserAvatarFallback.textContent = displayName.slice(0, 1).toUpperCase() || 'U';
+            topbarUserAvatarFallback.classList.remove('topbar-hidden');
+        }
+
+        topbarSocialLinks.innerHTML = socialLinks.map((item) => `
+            <a class="topbar-chip topbar-social-link" href="${escapeHtml(item.url)}" target="_blank" rel="noopener noreferrer" aria-label="${escapeHtml(item.label)}">
+                <i class="bi ${escapeHtml(item.icon)}"></i>
+            </a>
+        `).join('');
+        topbarSocialLinks.classList.toggle('topbar-hidden', socialLinks.length === 0);
         topbarSettingsButton.setAttribute('aria-label', isAdmin ? 'Ir a Datos Admin' : 'Cambiar Mis Datos');
     }
 
@@ -2900,6 +3259,7 @@ header('Expires: 0');
                     user_id: Number(assignedUser.id),
                     nombre: assignedUser.nombre,
                     apellido: assignedUser.apellido,
+                    nombre_tienda: assignedUser.nombre_tienda || '',
                     username: assignedUser.username,
                     email: assignedUser.email,
                     account_id: Number(account.id),
@@ -3031,7 +3391,14 @@ header('Expires: 0');
         userProfileApellido.value = profile.apellido || '';
         userProfileUsername.value = profile.username || '';
         userProfileTelefono.value = profile.telefono || '';
+        userProfileStoreName.value = profile.nombre_tienda || '';
         userProfileEmail.value = profile.email || '';
+        userProfileFacebook.value = profile.facebook || '';
+        userProfileInstagram.value = profile.instagram || '';
+        userProfileTiktok.value = profile.tiktok || '';
+        userProfileWhatsapp.value = profile.whatsapp || '';
+        userProfileTelegram.value = profile.telegram || '';
+        userProfilePhoto.value = '';
     }
 
     function renderUserModuleEmptyState(message) {
@@ -3565,7 +3932,7 @@ header('Expires: 0');
                 <div class="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-3">
                     <div>
                         <p class="text-primary fw-semibold mb-1">Bandeja de correo</p>
-                        <h2 class="h4 mb-1">${escapeHtml(user.nombre || '')} ${escapeHtml(user.apellido || '')}</h2>
+                        <h2 class="h4 mb-1">${escapeHtml(getUserDisplayName(user))}</h2>
                         <div class="text-secondary">@${escapeHtml(user.username || '')}</div>
                     </div>
                     ${Number(user.activo) === 1 ? '<span class="badge text-bg-success">Activo</span>' : '<span class="badge text-bg-secondary">Inactivo</span>'}
@@ -3736,7 +4103,14 @@ header('Expires: 0');
         document.getElementById('editUsername').value = user.username;
         document.getElementById('editUserEmail').value = user.email;
         document.getElementById('editUserPhone').value = user.telefono || '';
+        document.getElementById('editUserStoreName').value = user.nombre_tienda || '';
         document.getElementById('editUserActive').value = Number(user.activo) === 1 ? '1' : '0';
+        document.getElementById('editUserFacebook').value = user.facebook || '';
+        document.getElementById('editUserInstagram').value = user.instagram || '';
+        document.getElementById('editUserTiktok').value = user.tiktok || '';
+        document.getElementById('editUserWhatsapp').value = user.whatsapp || '';
+        document.getElementById('editUserTelegram').value = user.telegram || '';
+        document.getElementById('editUserProfilePhoto').value = '';
         userEditPanel.classList.remove('d-none');
         userEditPanel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
@@ -4152,7 +4526,7 @@ header('Expires: 0');
                 account.correo_acceso,
                 account.descripcion || '',
                 account.password_acceso,
-                ...assignedUsers.map((user) => [user.nombre, user.apellido, user.username, user.email].join(' ')),
+                ...assignedUsers.map((user) => [user.nombre_tienda || '', user.nombre, user.apellido, user.username, user.email].join(' ')),
             ].join(' ').toLowerCase();
 
             return haystack.includes(normalizedQuery);
@@ -4204,10 +4578,10 @@ header('Expires: 0');
         appState.selectedAssignedUsersAccountId = Number(accountId);
         const assignedUsers = normalizeArray(account.assigned_users);
         const state = getListTableState('assignedUsers');
-    state.query = '';
-    state.page = 1;
+        state.query = '';
+        state.page = 1;
         const normalizedQuery = state.query.trim().toLowerCase();
-        const filteredUsers = assignedUsers.filter((user) => [user.nombre, user.apellido, user.username, user.email].join(' ').toLowerCase().includes(normalizedQuery));
+        const filteredUsers = assignedUsers.filter((user) => [user.nombre_tienda || '', user.nombre, user.apellido, user.username, user.email].join(' ').toLowerCase().includes(normalizedQuery));
         const { paginatedRows, summary, totalPages } = getPaginatedRows(filteredUsers, state);
         assignedUsersModalTitle.textContent = `Usuarios asignados a ${account.correo_acceso}`;
         assignedUsersModalSubtitle.textContent = `${account.servicio_nombre} · ${assignedUsers.length} usuario(s) asignado(s)`;
@@ -4224,7 +4598,7 @@ header('Expires: 0');
         } else {
             assignedUsersTableBody.innerHTML = paginatedRows.map((user) => `
                 <tr>
-                    <td>${escapeHtml(user.nombre)} ${escapeHtml(user.apellido)}</td>
+                    <td>${escapeHtml(getUserDisplayName(user))}</td>
                     <td>@${escapeHtml(user.username)}</td>
                     <td>${escapeHtml(user.email)}</td>
                     <td>
@@ -4246,7 +4620,7 @@ header('Expires: 0');
 
         appState.selectedUserAssignmentsUserId = Number(userId);
         const assignments = normalizeArray(user.assignments);
-        userAssignmentsModalTitle.textContent = `Cuentas Asignadas a ${user.nombre} ${user.apellido}`;
+        userAssignmentsModalTitle.textContent = `Cuentas Asignadas a ${getUserDisplayName(user)}`;
         userAssignmentsModalSubtitle.textContent = `${assignments.length} cuenta(s) asignada(s) en total`;
         renderUserAssignmentsTable(user, { resetSearch: true });
 
@@ -4262,7 +4636,7 @@ header('Expires: 0');
             const assignmentsLabel = assignmentCount === 1 ? '1 cuenta asignada' : `${assignmentCount} cuentas asignadas`;
             const statusLabel = Number(user.activo) === 1 ? 'activo' : 'inactivo';
 
-            return [user.nombre, user.apellido, user.username, user.email, user.telefono || '', assignmentsLabel, statusLabel].join(' ').toLowerCase().includes(normalizedQuery);
+            return [user.nombre_tienda || '', user.nombre, user.apellido, user.username, user.email, user.telefono || '', assignmentsLabel, statusLabel].join(' ').toLowerCase().includes(normalizedQuery);
         });
         const { paginatedRows, summary, totalPages } = getPaginatedRows(filteredUsers, state);
         userCountBadge.textContent = `${users.length} usuario(s)`;
@@ -4287,7 +4661,7 @@ header('Expires: 0');
 
             return `
                 <tr>
-                    <td><div class="fw-semibold">${escapeHtml(user.nombre)} ${escapeHtml(user.apellido)}</div></td>
+                    <td><div class="fw-semibold">${escapeHtml(getUserDisplayName(user))}</div></td>
                     <td>@${escapeHtml(user.username)}</td>
                     <td>${escapeHtml(user.email)}</td>
                     <td>${escapeHtml(user.telefono || 'Sin teléfono')}</td>
@@ -4314,6 +4688,7 @@ header('Expires: 0');
         const normalizedQuery = state.query.trim().toLowerCase();
         const filteredRows = allRows.filter((row) => {
             const haystack = [
+                row.nombre_tienda || '',
                 row.nombre,
                 row.apellido,
                 row.username,
@@ -4345,7 +4720,7 @@ header('Expires: 0');
                         <table class="table table-hover align-middle mb-0">
                             <thead>
                                 <tr>
-                                    <th>Nombre</th>
+                                    <th>Tienda / Usuario</th>
                                     <th>Usuario</th>
                                     <th>Correo</th>
                                     <th>Cuenta asignada</th>
@@ -4356,7 +4731,7 @@ header('Expires: 0');
                             <tbody>
                                 ${paginatedRows.map((row) => `
                                     <tr>
-                                        <td>${escapeHtml(row.nombre)} ${escapeHtml(row.apellido)}</td>
+                                        <td>${escapeHtml(getUserDisplayName(row))}</td>
                                         <td>@${escapeHtml(row.username)}</td>
                                         <td>${escapeHtml(row.email)}</td>
                                         <td>
@@ -4472,6 +4847,7 @@ header('Expires: 0');
             const serviceAssignments = normalizeArray(user.assignments).filter((assignment) => serviceAccountIds.has(Number(assignment.account_id)));
             const allAssignments = normalizeArray(user.assignments);
             const haystack = [
+                user.nombre_tienda || '',
                 user.nombre,
                 user.apellido,
                 user.username,
@@ -4520,7 +4896,7 @@ header('Expires: 0');
 
             return `
                 <tr>
-                    <td data-label="Nombre">${escapeHtml(user.nombre)} ${escapeHtml(user.apellido)}</td>
+                    <td data-label="Tienda / Usuario">${escapeHtml(getUserDisplayName(user))}</td>
                     <td data-label="Usuario">@${escapeHtml(user.username)}</td>
                     <td data-label="Correo">${escapeHtml(user.email)}</td>
                     <td data-label="Cuentas asignadas">${currentAssignmentsMarkup}</td>

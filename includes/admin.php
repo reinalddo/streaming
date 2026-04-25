@@ -5,19 +5,21 @@ declare(strict_types=1);
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/session.php';
 require_once __DIR__ . '/mail.php';
+require_once __DIR__ . '/user_profile.php';
 
 function getAdminOverview(): array
 {
     $authenticatedUser = requireAdminUser();
 
     $pdo = getPdo();
+    ensureUserProfileColumns($pdo);
     ensureGallerySlidesTable($pdo);
     $adminProfile = fetchAdminProfile($pdo, (int) $authenticatedUser['id']);
 
     $services = $pdo->query('SELECT id, nombre, slug, logo_url, color_destacado, descripcion, activo, created_at FROM servicios ORDER BY nombre ASC')->fetchAll();
     $accounts = $pdo->query('SELECT cs.id, cs.servicio_id, cs.correo_acceso, cs.password_acceso, cs.descripcion, cs.activo, s.nombre AS servicio_nombre, s.logo_url, s.color_destacado FROM cuentas_servicio cs INNER JOIN servicios s ON s.id = cs.servicio_id ORDER BY s.nombre ASC, cs.correo_acceso ASC')->fetchAll();
-    $users = $pdo->query("SELECT id, nombre, apellido, username, email, telefono, activo FROM usuarios WHERE role = 'usuario' ORDER BY nombre ASC, apellido ASC, username ASC")->fetchAll();
-    $assignments = $pdo->query('SELECT ucs.id, ucs.usuario_id, ucs.cuenta_servicio_id, cs.correo_acceso, cs.password_acceso, cs.descripcion, s.nombre AS servicio_nombre, s.color_destacado, s.logo_url, u.nombre, u.apellido, u.username, u.email FROM usuario_cuentas_servicio ucs INNER JOIN cuentas_servicio cs ON cs.id = ucs.cuenta_servicio_id INNER JOIN servicios s ON s.id = cs.servicio_id INNER JOIN usuarios u ON u.id = ucs.usuario_id ORDER BY s.nombre ASC, cs.correo_acceso ASC')->fetchAll();
+    $users = $pdo->query("SELECT id, nombre, apellido, username, email, telefono, nombre_tienda, facebook, instagram, tiktok, whatsapp, telegram, foto_perfil_url, activo FROM usuarios WHERE role = 'usuario' ORDER BY nombre ASC, apellido ASC, username ASC")->fetchAll();
+    $assignments = $pdo->query('SELECT ucs.id, ucs.usuario_id, ucs.cuenta_servicio_id, cs.correo_acceso, cs.password_acceso, cs.descripcion, s.nombre AS servicio_nombre, s.color_destacado, s.logo_url, u.nombre, u.apellido, u.username, u.email, u.nombre_tienda, u.foto_perfil_url FROM usuario_cuentas_servicio ucs INNER JOIN cuentas_servicio cs ON cs.id = ucs.cuenta_servicio_id INNER JOIN servicios s ON s.id = cs.servicio_id INNER JOIN usuarios u ON u.id = ucs.usuario_id ORDER BY s.nombre ASC, cs.correo_acceso ASC')->fetchAll();
 
     $servicesById = [];
     foreach ($services as $service) {
@@ -67,6 +69,8 @@ function getAdminOverview(): array
                 'apellido' => $assignment['apellido'],
                 'username' => $assignment['username'],
                 'email' => $assignment['email'],
+                'nombre_tienda' => $assignment['nombre_tienda'],
+                'foto_perfil_url' => $assignment['foto_perfil_url'],
             ];
         }
     }
@@ -708,9 +712,10 @@ function unassignAccountFromUser(array $input): array
     return ['success' => true, 'message' => 'Cuenta desasignada correctamente.'];
 }
 
-function updateRegisteredUser(array $input): array
+function updateRegisteredUser(array $input, array $files = []): array
 {
     requireAdminUser();
+    ensureUserProfileColumns();
 
     $userId = (int) ($input['usuario_id'] ?? 0);
     $name = trim((string) ($input['nombre'] ?? ''));
@@ -719,8 +724,9 @@ function updateRegisteredUser(array $input): array
     $email = strtolower(trim((string) ($input['email'] ?? '')));
     $phone = trim((string) ($input['telefono'] ?? ''));
     $active = isset($input['activo']) ? (int) $input['activo'] : 1;
+    $extraProfileData = normalizeUserExtraProfileInput($input);
 
-    if ($userId <= 0 || $name === '' || $lastName === '' || $username === '' || $email === '') {
+    if ($userId <= 0 || $name === '' || $lastName === '' || $username === '' || $email === '' || $phone === '') {
         return ['success' => false, 'message' => 'Completa los datos obligatorios del usuario.'];
     }
 
@@ -736,6 +742,10 @@ function updateRegisteredUser(array $input): array
         return ['success' => false, 'message' => 'El usuario a editar no existe.'];
     }
 
+    $currentUserStmt = $pdo->prepare("SELECT foto_perfil_url FROM usuarios WHERE id = :id AND role = 'usuario' LIMIT 1");
+    $currentUserStmt->execute(['id' => $userId]);
+    $currentUser = $currentUserStmt->fetch();
+
     $dupStmt = $pdo->prepare('SELECT id FROM usuarios WHERE (email = :email OR username = :username) AND id <> :id LIMIT 1');
     $dupStmt->execute([
         'email' => $email,
@@ -747,24 +757,45 @@ function updateRegisteredUser(array $input): array
         return ['success' => false, 'message' => 'El correo o usuario ya pertenece a otro registro.'];
     }
 
-    $stmt = $pdo->prepare('UPDATE usuarios SET nombre = :nombre, apellido = :apellido, username = :username, email = :email, telefono = :telefono, activo = :activo WHERE id = :id AND role = :role');
-    $stmt->execute([
-        'nombre' => $name,
-        'apellido' => $lastName,
-        'username' => $username,
-        'email' => $email,
-        'telefono' => $phone !== '' ? $phone : null,
-        'activo' => $active === 1 ? 1 : 0,
-        'id' => $userId,
-        'role' => 'usuario',
-    ]);
+    $newProfilePhotoPath = uploadUserProfilePhoto($files['foto_perfil'] ?? null);
+    $finalPhotoPath = $newProfilePhotoPath ?? (($currentUser['foto_perfil_url'] ?? null) !== null ? (string) $currentUser['foto_perfil_url'] : null);
+
+    $stmt = $pdo->prepare('UPDATE usuarios SET nombre = :nombre, apellido = :apellido, username = :username, email = :email, telefono = :telefono, nombre_tienda = :nombre_tienda, facebook = :facebook, instagram = :instagram, tiktok = :tiktok, whatsapp = :whatsapp, telegram = :telegram, foto_perfil_url = :foto_perfil_url, activo = :activo WHERE id = :id AND role = :role');
+
+    try {
+        $stmt->execute([
+            'nombre' => $name,
+            'apellido' => $lastName,
+            'username' => $username,
+            'email' => $email,
+            'telefono' => $phone,
+            'nombre_tienda' => $extraProfileData['nombre_tienda'],
+            'facebook' => $extraProfileData['facebook'],
+            'instagram' => $extraProfileData['instagram'],
+            'tiktok' => $extraProfileData['tiktok'],
+            'whatsapp' => $extraProfileData['whatsapp'],
+            'telegram' => $extraProfileData['telegram'],
+            'foto_perfil_url' => $finalPhotoPath,
+            'activo' => $active === 1 ? 1 : 0,
+            'id' => $userId,
+            'role' => 'usuario',
+        ]);
+    } catch (Throwable $exception) {
+        deleteLocalUserProfileAsset($newProfilePhotoPath);
+        throw $exception;
+    }
+
+    if ($newProfilePhotoPath !== null) {
+        deleteLocalUserProfileAsset(($currentUser['foto_perfil_url'] ?? null) !== null ? (string) $currentUser['foto_perfil_url'] : null);
+    }
 
     return ['success' => true, 'message' => 'Usuario actualizado correctamente.'];
 }
 
-function createRegisteredUser(array $input): array
+function createRegisteredUser(array $input, array $files = []): array
 {
     requireAdminUser();
+    ensureUserProfileColumns();
 
     $name = trim((string) ($input['nombre'] ?? ''));
     $lastName = trim((string) ($input['apellido'] ?? ''));
@@ -772,8 +803,9 @@ function createRegisteredUser(array $input): array
     $email = strtolower(trim((string) ($input['email'] ?? '')));
     $phone = trim((string) ($input['telefono'] ?? ''));
     $password = (string) ($input['password'] ?? '');
+    $extraProfileData = normalizeUserExtraProfileInput($input);
 
-    if ($name === '' || $lastName === '' || $username === '' || $email === '' || $password === '') {
+    if ($name === '' || $lastName === '' || $username === '' || $email === '' || $phone === '' || $password === '') {
         return ['success' => false, 'message' => 'Completa los datos obligatorios del usuario.'];
     }
 
@@ -796,17 +828,32 @@ function createRegisteredUser(array $input): array
         return ['success' => false, 'message' => 'El correo o usuario ya se encuentra registrado.'];
     }
 
-    $stmt = $pdo->prepare('INSERT INTO usuarios (nombre, apellido, username, email, telefono, password_hash, role, activo) VALUES (:nombre, :apellido, :username, :email, :telefono, :password_hash, :role, :activo)');
-    $stmt->execute([
-        'nombre' => $name,
-        'apellido' => $lastName,
-        'username' => $username,
-        'email' => $email,
-        'telefono' => $phone !== '' ? $phone : null,
-        'password_hash' => password_hash($password, PASSWORD_DEFAULT),
-        'role' => 'usuario',
-        'activo' => 1,
-    ]);
+    $newProfilePhotoPath = uploadUserProfilePhoto($files['foto_perfil'] ?? null);
+
+    $stmt = $pdo->prepare('INSERT INTO usuarios (nombre, apellido, username, email, telefono, nombre_tienda, facebook, instagram, tiktok, whatsapp, telegram, foto_perfil_url, password_hash, role, activo) VALUES (:nombre, :apellido, :username, :email, :telefono, :nombre_tienda, :facebook, :instagram, :tiktok, :whatsapp, :telegram, :foto_perfil_url, :password_hash, :role, :activo)');
+
+    try {
+        $stmt->execute([
+            'nombre' => $name,
+            'apellido' => $lastName,
+            'username' => $username,
+            'email' => $email,
+            'telefono' => $phone,
+            'nombre_tienda' => $extraProfileData['nombre_tienda'],
+            'facebook' => $extraProfileData['facebook'],
+            'instagram' => $extraProfileData['instagram'],
+            'tiktok' => $extraProfileData['tiktok'],
+            'whatsapp' => $extraProfileData['whatsapp'],
+            'telegram' => $extraProfileData['telegram'],
+            'foto_perfil_url' => $newProfilePhotoPath,
+            'password_hash' => password_hash($password, PASSWORD_DEFAULT),
+            'role' => 'usuario',
+            'activo' => 1,
+        ]);
+    } catch (Throwable $exception) {
+        deleteLocalUserProfileAsset($newProfilePhotoPath);
+        throw $exception;
+    }
 
     return ['success' => true, 'message' => 'Usuario creado correctamente desde administración.'];
 }
