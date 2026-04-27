@@ -1416,6 +1416,9 @@ header('Expires: 0');
                                         </button>
                                     </div>
                                 </div>
+                                <div class="col-12 text-end">
+                                    <button id="forgotPasswordLink" class="btn btn-link p-0 text-decoration-none" type="button">Restablecer contraseña</button>
+                                </div>
                                 <div class="col-12 d-grid">
                                     <button class="btn btn-primary btn-lg" type="submit">Entrar</button>
                                 </div>
@@ -2471,6 +2474,41 @@ header('Expires: 0');
     </div>
 </div>
 
+<div class="modal fade" id="passwordResetRequestModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div>
+                    <h2 id="passwordResetRequestTitle" class="h5 mb-1">Restablecer contraseña</h2>
+                    <p id="passwordResetRequestDescription" class="small text-secondary mb-0">Se enviará un enlace de recuperación al correo del usuario.</p>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <form id="passwordResetRequestForm" class="row g-3" novalidate>
+                    <input type="hidden" id="passwordResetLoginValue" name="login" value="">
+                    <div id="passwordResetUsernameGroup" class="col-12 d-none">
+                        <label class="form-label" for="passwordResetUsername">Usuario escrito</label>
+                        <input class="form-control" type="text" id="passwordResetUsername" value="" readonly>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label" for="passwordResetEmail">Correo de recuperación</label>
+                        <input class="form-control" type="email" id="passwordResetEmail" name="email" placeholder="usuario@dominio.com">
+                        <div id="passwordResetEmailHelp" class="form-text">El enlace se enviará solo si el correo existe y coincide con la cuenta indicada.</div>
+                    </div>
+                    <div class="col-12">
+                        <div id="passwordResetRequestStatus" class="alert alert-secondary mb-0" role="status">Completa los datos para enviar el enlace de recuperación.</div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button id="passwordResetRequestSubmitButton" type="submit" form="passwordResetRequestForm" class="btn btn-primary">Enviar Correo de Recuperación</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="modal fade" id="userProfileModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-xl user-profile-modal-dialog">
         <div class="modal-content">
@@ -2616,6 +2654,7 @@ header('Expires: 0');
     const userStatusMessage = document.getElementById('userStatusMessage');
     const adminStatusMessage = document.getElementById('adminStatusMessage');
     const loginForm = document.getElementById('loginForm');
+    const forgotPasswordLink = document.getElementById('forgotPasswordLink');
     const registerForm = document.getElementById('registerForm');
     const userSearchForm = document.getElementById('userSearchForm');
     const userSearchEmail = document.getElementById('userSearchEmail');
@@ -2813,6 +2852,19 @@ header('Expires: 0');
     const copyPasswordRevealButton = document.getElementById('copyPasswordRevealButton');
     const passwordRevealModal = new bootstrap.Modal(passwordRevealModalElement);
 
+    const passwordResetRequestModalElement = document.getElementById('passwordResetRequestModal');
+    const passwordResetRequestTitle = document.getElementById('passwordResetRequestTitle');
+    const passwordResetRequestDescription = document.getElementById('passwordResetRequestDescription');
+    const passwordResetRequestForm = document.getElementById('passwordResetRequestForm');
+    const passwordResetLoginValue = document.getElementById('passwordResetLoginValue');
+    const passwordResetUsernameGroup = document.getElementById('passwordResetUsernameGroup');
+    const passwordResetUsername = document.getElementById('passwordResetUsername');
+    const passwordResetEmail = document.getElementById('passwordResetEmail');
+    const passwordResetEmailHelp = document.getElementById('passwordResetEmailHelp');
+    const passwordResetRequestStatus = document.getElementById('passwordResetRequestStatus');
+    const passwordResetRequestSubmitButton = document.getElementById('passwordResetRequestSubmitButton');
+    const passwordResetRequestModal = new bootstrap.Modal(passwordResetRequestModalElement);
+
     const userProfileModalElement = document.getElementById('userProfileModal');
     const userProfileForm = document.getElementById('userProfileForm');
     const userProfileNombre = document.getElementById('userProfileNombre');
@@ -2953,6 +3005,56 @@ header('Expires: 0');
 
     function normalizeArray(value) {
         return Array.isArray(value) ? value : [];
+    }
+
+    function isValidEmailAddress(value) {
+        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || '').trim());
+    }
+
+    function setPasswordResetRequestStatus(message, tone = 'secondary') {
+        passwordResetRequestStatus.className = `alert alert-${tone} mb-0`;
+        passwordResetRequestStatus.textContent = message;
+    }
+
+    function resetPasswordResetRequestFormState() {
+        passwordResetRequestForm.reset();
+        passwordResetLoginValue.value = '';
+        passwordResetUsername.value = '';
+        passwordResetUsernameGroup.classList.add('d-none');
+        passwordResetEmail.readOnly = false;
+        passwordResetEmail.placeholder = 'usuario@dominio.com';
+        passwordResetEmailHelp.textContent = 'El enlace se enviará solo si el correo existe y coincide con la cuenta indicada.';
+        passwordResetRequestSubmitButton.disabled = false;
+        setPasswordResetRequestStatus('Completa los datos para enviar el enlace de recuperación.', 'secondary');
+    }
+
+    function openPasswordResetRequestModal() {
+        resetPasswordResetRequestFormState();
+        const loginValue = String(document.getElementById('loginIdentifier')?.value || '').trim();
+        passwordResetLoginValue.value = loginValue;
+
+        if (loginValue !== '' && isValidEmailAddress(loginValue)) {
+            passwordResetRequestTitle.textContent = 'Restablecer contraseña';
+            passwordResetRequestDescription.textContent = 'Se enviará un enlace de recuperación al correo que escribiste en el acceso.';
+            passwordResetEmail.value = loginValue;
+            passwordResetEmail.readOnly = true;
+            passwordResetEmailHelp.textContent = 'Usaremos este mismo correo para validar la cuenta y enviar el enlace.';
+        } else if (loginValue !== '') {
+            passwordResetRequestTitle.textContent = 'Confirmar correo asociado';
+            passwordResetRequestDescription.textContent = 'Escribe el correo asociado al usuario para validar la cuenta antes de enviar el enlace.';
+            passwordResetUsernameGroup.classList.remove('d-none');
+            passwordResetUsername.value = loginValue;
+            passwordResetEmail.placeholder = 'Correo asociado al usuario';
+            passwordResetEmailHelp.textContent = 'El correo debe existir y pertenecer exactamente al usuario indicado.';
+        } else {
+            passwordResetRequestTitle.textContent = 'Restablecer contraseña';
+            passwordResetRequestDescription.textContent = 'Escribe tu correo y te enviaremos un enlace para cambiar la clave.';
+            passwordResetEmail.placeholder = 'Correo registrado';
+            passwordResetEmailHelp.textContent = 'El enlace solo se enviará si existe una cuenta activa con ese correo.';
+        }
+
+        passwordResetRequestModal.show();
+        passwordResetEmail.focus();
     }
 
     function syncResponsiveTableLabels(root = document) {
@@ -4257,10 +4359,25 @@ header('Expires: 0');
         });
     }
 
-    function showFeedbackModal({ title = 'Aviso', message }) {
+    function showFeedbackModal({ title = 'Aviso', message = '', htmlMessage = '' }) {
         feedbackModalTitle.textContent = title;
-        feedbackModalBody.textContent = message;
+        if (htmlMessage !== '') {
+            feedbackModalBody.innerHTML = htmlMessage;
+        } else {
+            feedbackModalBody.textContent = message;
+        }
         feedbackModal.show();
+    }
+
+    function hideModalThen(callback, modalElement) {
+        if (!modalElement.classList.contains('show')) {
+            callback();
+            return;
+        }
+
+        modalElement.addEventListener('hidden.bs.modal', () => {
+            callback();
+        }, { once: true });
     }
 
     function resetImportModal() {
@@ -5087,6 +5204,10 @@ header('Expires: 0');
         copyPasswordRevealButton.textContent = 'Copiar';
     });
 
+    passwordResetRequestModalElement.addEventListener('hidden.bs.modal', () => {
+        resetPasswordResetRequestFormState();
+    });
+
     userSearchLoadingModalElement.addEventListener('hidden.bs.modal', () => {
         resetUserSearchUiState();
     });
@@ -5156,6 +5277,44 @@ header('Expires: 0');
         } catch (error) {
             console.log('Usuario No existe');
             showStatus(error.message, 'danger');
+        }
+    });
+
+    forgotPasswordLink.addEventListener('click', () => {
+        openPasswordResetRequestModal();
+    });
+
+    passwordResetRequestForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        setPasswordResetRequestStatus('Validando datos y enviando correo de recuperación...', 'secondary');
+        passwordResetRequestSubmitButton.disabled = true;
+
+        try {
+            const result = await requestJson('./api/password-reset/request.php', {
+                method: 'POST',
+                body: new FormData(passwordResetRequestForm),
+            });
+
+            setPasswordResetRequestStatus(result.message, 'success');
+            const feedbackPayload = result.reset_url
+                ? {
+                    title: 'Enlace temporal generado',
+                    htmlMessage: `<p>${escapeHtml(result.message)}</p><p class="mb-0"><a href="${escapeHtml(result.reset_url)}" target="_blank" rel="noopener noreferrer">Abrir enlace de restablecimiento</a></p>`,
+                }
+                : {
+                    title: 'Correo enviado',
+                    message: result.message,
+                };
+
+            hideModalThen(() => {
+                showFeedbackModal(feedbackPayload);
+            }, passwordResetRequestModalElement);
+            passwordResetRequestModal.hide();
+            showStatus(result.message, 'success');
+        } catch (error) {
+            setPasswordResetRequestStatus(error.message, 'danger');
+        } finally {
+            passwordResetRequestSubmitButton.disabled = false;
         }
     });
 
