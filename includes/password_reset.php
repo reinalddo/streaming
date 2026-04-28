@@ -51,10 +51,6 @@ function requestPasswordReset(array $input, array $server = []): array
     $tokenHash = hash('sha256', $token);
     $expiresAt = (new DateTimeImmutable('now'))->modify('+' . PASSWORD_RESET_TOKEN_TTL_SECONDS . ' seconds')->format('Y-m-d H:i:s');
 
-    $pdo->prepare('DELETE FROM password_reset_tokens WHERE user_id = :user_id')->execute([
-        'user_id' => (int) $user['id'],
-    ]);
-
     $insertStmt = $pdo->prepare('INSERT INTO password_reset_tokens (user_id, email, selector, token_hash, expires_at) VALUES (:user_id, :email, :selector, :token_hash, :expires_at)');
     $insertStmt->execute([
         'user_id' => (int) $user['id'],
