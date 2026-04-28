@@ -46,6 +46,12 @@ function ensurePasswordResetTableColumns(PDO $pdo): void
         'token_plain',
         'ALTER TABLE password_reset_tokens ADD COLUMN token_plain CHAR(64) NULL AFTER token_hash'
     );
+
+    ensurePasswordResetNullableColumn(
+        $pdo,
+        'expires_at',
+        'ALTER TABLE password_reset_tokens MODIFY COLUMN expires_at DATETIME NULL'
+    );
 }
 
 function ensurePasswordResetTableColumn(PDO $pdo, string $columnName, string $alterSql): void
@@ -54,6 +60,19 @@ function ensurePasswordResetTableColumn(PDO $pdo, string $columnName, string $al
     $stmt->execute(['column_name' => $columnName]);
 
     if ($stmt->fetch() !== false) {
+        return;
+    }
+
+    $pdo->exec($alterSql);
+}
+
+function ensurePasswordResetNullableColumn(PDO $pdo, string $columnName, string $alterSql): void
+{
+    $stmt = $pdo->prepare('SHOW COLUMNS FROM password_reset_tokens LIKE :column_name');
+    $stmt->execute(['column_name' => $columnName]);
+    $column = $stmt->fetch();
+
+    if ($column === false || strtoupper((string) ($column['Null'] ?? 'NO')) === 'YES') {
         return;
     }
 
