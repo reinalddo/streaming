@@ -151,7 +151,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </div>
             </form>
         <?php else: ?>
-            <div class="alert alert-warning"><?= htmlspecialchars((string) ($viewState['message'] ?? 'El enlace de recuperación ya no está disponible.'), ENT_QUOTES, 'UTF-8') ?></div>
+            <div class="alert alert-warning"><?= htmlspecialchars((string) ($viewState['message'] ?? 'El enlace de recuperación no es válido.'), ENT_QUOTES, 'UTF-8') ?></div>
             <div class="d-grid">
                 <a class="btn btn-primary" href="./index.php">Volver al login</a>
             </div>

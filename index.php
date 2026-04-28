@@ -5298,7 +5298,7 @@ header('Expires: 0');
             setPasswordResetRequestStatus(result.message, 'success');
             const feedbackPayload = result.reset_url
                 ? {
-                    title: 'Enlace temporal generado',
+                    title: 'Enlace de restablecimiento generado',
                     htmlMessage: `<p>${escapeHtml(result.message)}</p><p class="mb-0"><a href="${escapeHtml(result.reset_url)}" target="_blank" rel="noopener noreferrer">Abrir enlace de restablecimiento</a></p>`,
                 }
                 : {

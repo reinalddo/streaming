@@ -7,8 +7,6 @@ require_once __DIR__ . '/session.php';
 require_once __DIR__ . '/admin.php';
 require_once __DIR__ . '/mail.php';
 
-const PASSWORD_RESET_TOKEN_TTL_SECONDS = 3600;
-
 function ensurePasswordResetTable(?PDO $pdo = null): void
 {
     $pdo ??= getPdo();
@@ -20,7 +18,8 @@ function ensurePasswordResetTable(?PDO $pdo = null): void
             email VARCHAR(190) NOT NULL,
             selector CHAR(18) NOT NULL,
             token_hash CHAR(64) NOT NULL,
-            expires_at DATETIME NOT NULL,
+            token_plain CHAR(64) NULL,
+            expires_at DATETIME NULL,
             used_at DATETIME NULL,
             created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
             PRIMARY KEY (id),
@@ -31,13 +30,34 @@ function ensurePasswordResetTable(?PDO $pdo = null): void
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci'
     );
 
+    ensurePasswordResetTableColumns($pdo);
     cleanupExpiredPasswordResetTokens($pdo);
 }
 
 function cleanupExpiredPasswordResetTokens(?PDO $pdo = null): void
 {
-    $pdo ??= getPdo();
-    $pdo->exec('DELETE FROM password_reset_tokens WHERE used_at IS NOT NULL OR expires_at < NOW()');
+    return;
+}
+
+function ensurePasswordResetTableColumns(PDO $pdo): void
+{
+    ensurePasswordResetTableColumn(
+        $pdo,
+        'token_plain',
+        'ALTER TABLE password_reset_tokens ADD COLUMN token_plain CHAR(64) NULL AFTER token_hash'
+    );
+}
+
+function ensurePasswordResetTableColumn(PDO $pdo, string $columnName, string $alterSql): void
+{
+    $stmt = $pdo->prepare('SHOW COLUMNS FROM password_reset_tokens LIKE :column_name');
+    $stmt->execute(['column_name' => $columnName]);
+
+    if ($stmt->fetch() !== false) {
+        return;
+    }
+
+    $pdo->exec($alterSql);
 }
 
 function requestPasswordReset(array $input, array $server = []): array
@@ -46,19 +66,9 @@ function requestPasswordReset(array $input, array $server = []): array
     ensurePasswordResetTable($pdo);
 
     $user = resolvePasswordResetUser($input, $pdo);
-    $selector = bin2hex(random_bytes(9));
-    $token = bin2hex(random_bytes(32));
-    $tokenHash = hash('sha256', $token);
-    $expiresAt = (new DateTimeImmutable('now'))->modify('+' . PASSWORD_RESET_TOKEN_TTL_SECONDS . ' seconds')->format('Y-m-d H:i:s');
-
-    $insertStmt = $pdo->prepare('INSERT INTO password_reset_tokens (user_id, email, selector, token_hash, expires_at) VALUES (:user_id, :email, :selector, :token_hash, :expires_at)');
-    $insertStmt->execute([
-        'user_id' => (int) $user['id'],
-        'email' => (string) $user['email'],
-        'selector' => $selector,
-        'token_hash' => $tokenHash,
-        'expires_at' => $expiresAt,
-    ]);
+    $resetLinkData = getOrCreatePersistentPasswordResetLink($user, $pdo);
+    $selector = $resetLinkData['selector'];
+    $token = $resetLinkData['token'];
 
     $resetUrl = buildPasswordResetUrl($selector, $token, $server);
 
@@ -68,7 +78,7 @@ function requestPasswordReset(array $input, array $server = []): array
         if (isLocalPasswordResetFallbackEnabled($server)) {
             return [
                 'success' => true,
-                'message' => 'La cuenta sí está asociada, pero este servidor local no pudo enviar el correo. Usa el enlace temporal para continuar la prueba.',
+                'message' => 'La cuenta sí está asociada, pero este servidor local no pudo enviar el correo. Usa el enlace de restablecimiento para continuar la prueba.',
                 'email' => (string) $user['email'],
                 'mail_delivery' => false,
                 'reset_url' => $resetUrl,
@@ -93,7 +103,7 @@ function getPasswordResetViewState(string $selector, string $token): array
     if ($record === null) {
         return [
             'valid' => false,
-            'message' => 'El enlace de recuperación no es válido o ya expiró.',
+            'message' => 'El enlace de recuperación no es válido.',
             'user' => null,
         ];
     }
@@ -134,7 +144,7 @@ function completePasswordReset(array $input, array $server = []): array
     $record = findValidPasswordResetRecord($selector, $token, $pdo);
 
     if ($record === null) {
-        return ['success' => false, 'message' => 'El enlace de recuperación no es válido o ya expiró.'];
+        return ['success' => false, 'message' => 'El enlace de recuperación no es válido.'];
     }
 
     $pdo->beginTransaction();
@@ -143,15 +153,6 @@ function completePasswordReset(array $input, array $server = []): array
         $pdo->prepare('UPDATE usuarios SET password_hash = :password_hash WHERE id = :id LIMIT 1')->execute([
             'password_hash' => password_hash($password, PASSWORD_DEFAULT),
             'id' => (int) $record['user_id'],
-        ]);
-
-        $pdo->prepare('UPDATE password_reset_tokens SET used_at = NOW() WHERE id = :id LIMIT 1')->execute([
-            'id' => (int) $record['token_id'],
-        ]);
-
-        $pdo->prepare('DELETE FROM password_reset_tokens WHERE user_id = :user_id AND id <> :id')->execute([
-            'user_id' => (int) $record['user_id'],
-            'id' => (int) $record['token_id'],
         ]);
 
         $pdo->commit();
@@ -264,7 +265,7 @@ function resolvePasswordResetUser(array $input, PDO $pdo): array
 
 function findValidPasswordResetRecord(string $selector, string $token, ?PDO $pdo = null): ?array
 {
-    if (!preg_match('/^[a-f0-9]{18}$/', $selector) || !preg_match('/^[a-f0-9]{64}$/', $token)) {
+    if (!isValidPasswordResetSelector($selector) || !isValidPasswordResetToken($token)) {
         return null;
     }
 
@@ -272,7 +273,7 @@ function findValidPasswordResetRecord(string $selector, string $token, ?PDO $pdo
     ensurePasswordResetTable($pdo);
 
     $stmt = $pdo->prepare(
-        "SELECT prt.id AS token_id, prt.user_id, prt.email, prt.token_hash, prt.expires_at, prt.used_at, u.username, u.nombre, u.apellido, u.activo
+        "SELECT prt.id AS token_id, prt.user_id, prt.email, prt.token_hash, prt.token_plain, prt.expires_at, prt.used_at, u.username, u.nombre, u.apellido, u.activo
          FROM password_reset_tokens prt
          INNER JOIN usuarios u ON u.id = prt.user_id
          WHERE prt.selector = :selector
@@ -285,7 +286,7 @@ function findValidPasswordResetRecord(string $selector, string $token, ?PDO $pdo
         return null;
     }
 
-    if ($record['used_at'] !== null || strtotime((string) $record['expires_at']) < time() || (int) ($record['activo'] ?? 0) !== 1) {
+    if ((int) ($record['activo'] ?? 0) !== 1) {
         return null;
     }
 
@@ -334,7 +335,7 @@ function sendPasswordResetLinkEmail(array $user, string $resetUrl, array $server
                 <h1 style="margin-top:0;font-size:24px;">Recuperación de contraseña</h1>
                 <p>Hola ' . escapePasswordResetHtml($recipientName) . ',</p>
                 <p>Recibimos una solicitud para restablecer la contraseña de tu cuenta en <strong>' . escapePasswordResetHtml($pageName) . '</strong>.</p>
-                <p>Haz clic en el siguiente botón para crear una nueva clave. Este enlace estará disponible durante 1 hora.</p>
+                <p>Haz clic en el siguiente botón para crear una nueva clave. Puedes volver a usar este mismo enlace cuando lo necesites.</p>
                 <p style="margin:24px 0;">
                     <a href="' . escapePasswordResetHtml($resetUrl) . '" style="display:inline-block;background:#0b57d0;color:#ffffff;text-decoration:none;padding:14px 22px;border-radius:12px;font-weight:700;">Restablecer contraseña</a>
                 </p>
@@ -421,6 +422,77 @@ function isLocalPasswordResetFallbackEnabled(array $server = []): bool
     $host = preg_replace('/:\d+$/', '', $host) ?? $host;
 
     return in_array($host, ['localhost', '127.0.0.1'], true) || str_ends_with($host, '.local');
+}
+
+function getOrCreatePersistentPasswordResetLink(array $user, PDO $pdo): array
+{
+    $stmt = $pdo->prepare('SELECT id, selector, token_plain FROM password_reset_tokens WHERE user_id = :user_id ORDER BY id DESC LIMIT 1');
+    $stmt->execute(['user_id' => (int) $user['id']]);
+    $record = $stmt->fetch();
+
+    if ($record !== false && isValidPasswordResetSelector((string) ($record['selector'] ?? '')) && isValidPasswordResetToken((string) ($record['token_plain'] ?? ''))) {
+        $pdo->prepare('UPDATE password_reset_tokens SET email = :email, used_at = NULL, expires_at = NULL WHERE id = :id LIMIT 1')->execute([
+            'email' => (string) $user['email'],
+            'id' => (int) $record['id'],
+        ]);
+
+        $pdo->prepare('DELETE FROM password_reset_tokens WHERE user_id = :user_id AND id <> :id')->execute([
+            'user_id' => (int) $user['id'],
+            'id' => (int) $record['id'],
+        ]);
+
+        return [
+            'selector' => (string) $record['selector'],
+            'token' => (string) $record['token_plain'],
+        ];
+    }
+
+    $selector = bin2hex(random_bytes(9));
+    $token = bin2hex(random_bytes(32));
+    $tokenHash = hash('sha256', $token);
+
+    if ($record !== false) {
+        $pdo->prepare('UPDATE password_reset_tokens SET email = :email, selector = :selector, token_hash = :token_hash, token_plain = :token_plain, used_at = NULL, expires_at = NULL WHERE id = :id LIMIT 1')->execute([
+            'email' => (string) $user['email'],
+            'selector' => $selector,
+            'token_hash' => $tokenHash,
+            'token_plain' => $token,
+            'id' => (int) $record['id'],
+        ]);
+
+        $tokenId = (int) $record['id'];
+    } else {
+        $insertStmt = $pdo->prepare('INSERT INTO password_reset_tokens (user_id, email, selector, token_hash, token_plain, expires_at, used_at) VALUES (:user_id, :email, :selector, :token_hash, :token_plain, NULL, NULL)');
+        $insertStmt->execute([
+            'user_id' => (int) $user['id'],
+            'email' => (string) $user['email'],
+            'selector' => $selector,
+            'token_hash' => $tokenHash,
+            'token_plain' => $token,
+        ]);
+
+        $tokenId = (int) $pdo->lastInsertId();
+    }
+
+    $pdo->prepare('DELETE FROM password_reset_tokens WHERE user_id = :user_id AND id <> :id')->execute([
+        'user_id' => (int) $user['id'],
+        'id' => $tokenId,
+    ]);
+
+    return [
+        'selector' => $selector,
+        'token' => $token,
+    ];
+}
+
+function isValidPasswordResetSelector(string $selector): bool
+{
+    return preg_match('/^[a-f0-9]{18}$/', $selector) === 1;
+}
+
+function isValidPasswordResetToken(string $token): bool
+{
+    return preg_match('/^[a-f0-9]{64}$/', $token) === 1;
 }
 
 function encodeMailSubject(string $subject): string
