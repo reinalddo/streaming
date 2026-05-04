@@ -14,6 +14,7 @@ function getAdminOverview(): array
     $pdo = getPdo();
     ensureUserProfileColumns($pdo);
     ensureUsersResellerColumn($pdo);
+    ensureResellerSellerAssignmentsTable($pdo);
     ensureGallerySlidesTable($pdo);
     $adminProfile = fetchAdminProfile($pdo, (int) $authenticatedUser['id']);
 
@@ -21,6 +22,7 @@ function getAdminOverview(): array
     $accounts = $pdo->query('SELECT cs.id, cs.servicio_id, cs.correo_acceso, cs.password_acceso, cs.descripcion, cs.activo, s.nombre AS servicio_nombre, s.logo_url, s.color_destacado FROM cuentas_servicio cs INNER JOIN servicios s ON s.id = cs.servicio_id ORDER BY s.nombre ASC, cs.correo_acceso ASC')->fetchAll();
     $users = $pdo->query("SELECT id, nombre, apellido, username, email, telefono, nombre_tienda, facebook, instagram, tiktok, whatsapp, telegram, foto_perfil_url, activo, revendedor FROM usuarios WHERE role = 'usuario' ORDER BY nombre ASC, apellido ASC, username ASC")->fetchAll();
     $assignments = $pdo->query('SELECT ucs.id, ucs.usuario_id, ucs.cuenta_servicio_id, cs.correo_acceso, cs.password_acceso, cs.descripcion, s.nombre AS servicio_nombre, s.color_destacado, s.logo_url, u.nombre, u.apellido, u.username, u.email, u.nombre_tienda, u.foto_perfil_url FROM usuario_cuentas_servicio ucs INNER JOIN cuentas_servicio cs ON cs.id = ucs.cuenta_servicio_id INNER JOIN servicios s ON s.id = cs.servicio_id INNER JOIN usuarios u ON u.id = ucs.usuario_id ORDER BY s.nombre ASC, cs.correo_acceso ASC')->fetchAll();
+    $resellerSellerAssignments = $pdo->query('SELECT revendedor_usuario_id, vendedor_usuario_id FROM usuario_revendedor_vendedores ORDER BY revendedor_usuario_id ASC, vendedor_usuario_id ASC')->fetchAll();
 
     $servicesById = [];
     foreach ($services as $service) {
@@ -42,6 +44,7 @@ function getAdminOverview(): array
     $usersById = [];
     foreach ($users as $user) {
         $user['assignments'] = [];
+        $user['seller_user_ids'] = [];
         $usersById[(int) $user['id']] = $user;
     }
 
@@ -74,6 +77,17 @@ function getAdminOverview(): array
                 'foto_perfil_url' => $assignment['foto_perfil_url'],
             ];
         }
+    }
+
+    foreach ($resellerSellerAssignments as $assignment) {
+        $resellerUserId = (int) ($assignment['revendedor_usuario_id'] ?? 0);
+        $sellerUserId = (int) ($assignment['vendedor_usuario_id'] ?? 0);
+
+        if ($resellerUserId <= 0 || $sellerUserId <= 0 || !isset($usersById[$resellerUserId])) {
+            continue;
+        }
+
+        $usersById[$resellerUserId]['seller_user_ids'][] = $sellerUserId;
     }
 
     $servicesOutput = [];
@@ -115,6 +129,25 @@ function ensureUsersResellerColumn(?PDO $pdo = null): void
     }
 
     $pdo->exec('ALTER TABLE usuarios ADD COLUMN revendedor TINYINT(1) NOT NULL DEFAULT 0 AFTER role');
+}
+
+function ensureResellerSellerAssignmentsTable(?PDO $pdo = null): void
+{
+    $pdo ??= getPdo();
+    $pdo->exec(
+        'CREATE TABLE IF NOT EXISTS usuario_revendedor_vendedores (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            revendedor_usuario_id BIGINT UNSIGNED NOT NULL,
+            vendedor_usuario_id BIGINT UNSIGNED NOT NULL,
+            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            UNIQUE KEY uq_revendedor_vendedor (revendedor_usuario_id, vendedor_usuario_id),
+            KEY idx_revendedor_usuario (revendedor_usuario_id),
+            KEY idx_vendedor_usuario (vendedor_usuario_id),
+            CONSTRAINT fk_revendedor_usuario FOREIGN KEY (revendedor_usuario_id) REFERENCES usuarios (id) ON DELETE CASCADE ON UPDATE CASCADE,
+            CONSTRAINT fk_vendedor_usuario FOREIGN KEY (vendedor_usuario_id) REFERENCES usuarios (id) ON DELETE CASCADE ON UPDATE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci'
+    );
 }
 
 function getPublicAppConfiguration(): array
@@ -839,6 +872,78 @@ function setRegisteredUserResellerStatus(array $input): array
         'message' => $revendedor === 1 ? 'El usuario fue marcado como revendedor.' : 'El usuario dejó de ser revendedor.',
         'usuario_id' => $userId,
         'revendedor' => $revendedor,
+    ];
+}
+
+function setResellerSellerAssignment(array $input): array
+{
+    requireAdminUser();
+
+    $resellerUserId = (int) ($input['revendedor_usuario_id'] ?? 0);
+    $sellerUserId = (int) ($input['vendedor_usuario_id'] ?? 0);
+    $assigned = (int) ($input['assigned'] ?? 0) === 1 ? 1 : 0;
+
+    if ($resellerUserId <= 0 || $sellerUserId <= 0) {
+        return ['success' => false, 'message' => 'Debes indicar el revendedor y el vendedor a actualizar.'];
+    }
+
+    if ($resellerUserId === $sellerUserId) {
+        return ['success' => false, 'message' => 'Un usuario no puede asignarse a sí mismo como vendedor.'];
+    }
+
+    $pdo = getPdo();
+    ensureUsersResellerColumn($pdo);
+    ensureResellerSellerAssignmentsTable($pdo);
+
+    $usersStmt = $pdo->prepare("SELECT id, revendedor FROM usuarios WHERE id IN (:reseller_id, :seller_id) AND role = 'usuario'");
+    $usersStmt->bindValue(':reseller_id', $resellerUserId, PDO::PARAM_INT);
+    $usersStmt->bindValue(':seller_id', $sellerUserId, PDO::PARAM_INT);
+    $usersStmt->execute();
+    $users = $usersStmt->fetchAll();
+
+    if (count($users) !== 2) {
+        return ['success' => false, 'message' => 'Alguno de los usuarios indicados no existe.'];
+    }
+
+    $resellerUser = null;
+    foreach ($users as $user) {
+        if ((int) $user['id'] === $resellerUserId) {
+            $resellerUser = $user;
+            break;
+        }
+    }
+
+    if ($resellerUser === null || (int) ($resellerUser['revendedor'] ?? 0) !== 1) {
+        return ['success' => false, 'message' => 'El usuario seleccionado debe estar marcado como revendedor antes de asignar vendedores.'];
+    }
+
+    if ($assigned === 1) {
+        $stmt = $pdo->prepare('INSERT INTO usuario_revendedor_vendedores (revendedor_usuario_id, vendedor_usuario_id) VALUES (:revendedor_usuario_id, :vendedor_usuario_id)');
+
+        try {
+            $stmt->execute([
+                'revendedor_usuario_id' => $resellerUserId,
+                'vendedor_usuario_id' => $sellerUserId,
+            ]);
+        } catch (PDOException $exception) {
+            if ($exception->getCode() !== '23000') {
+                throw $exception;
+            }
+        }
+    } else {
+        $stmt = $pdo->prepare('DELETE FROM usuario_revendedor_vendedores WHERE revendedor_usuario_id = :revendedor_usuario_id AND vendedor_usuario_id = :vendedor_usuario_id');
+        $stmt->execute([
+            'revendedor_usuario_id' => $resellerUserId,
+            'vendedor_usuario_id' => $sellerUserId,
+        ]);
+    }
+
+    return [
+        'success' => true,
+        'message' => $assigned === 1 ? 'Vendedor asignado correctamente.' : 'Vendedor desasignado correctamente.',
+        'revendedor_usuario_id' => $resellerUserId,
+        'vendedor_usuario_id' => $sellerUserId,
+        'assigned' => $assigned,
     ];
 }
 

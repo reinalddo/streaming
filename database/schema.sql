@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS usuarios (
     foto_perfil_url VARCHAR(255) NULL,
     password_hash VARCHAR(255) NOT NULL,
     role ENUM('admin', 'usuario') NOT NULL DEFAULT 'usuario',
+    revendedor TINYINT(1) NOT NULL DEFAULT 0,
     activo TINYINT(1) NOT NULL DEFAULT 1,
     ultimo_login_at DATETIME NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -68,6 +69,19 @@ CREATE TABLE IF NOT EXISTS usuario_cuentas_servicio (
     KEY idx_usuario_cuentas_cuenta (cuenta_servicio_id),
     CONSTRAINT fk_usuario_cuentas_usuario FOREIGN KEY (usuario_id) REFERENCES usuarios (id) ON DELETE CASCADE ON UPDATE CASCADE,
     CONSTRAINT fk_usuario_cuentas_cuenta FOREIGN KEY (cuenta_servicio_id) REFERENCES cuentas_servicio (id) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS usuario_revendedor_vendedores (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    revendedor_usuario_id BIGINT UNSIGNED NOT NULL,
+    vendedor_usuario_id BIGINT UNSIGNED NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_revendedor_vendedor (revendedor_usuario_id, vendedor_usuario_id),
+    KEY idx_revendedor_usuario (revendedor_usuario_id),
+    KEY idx_vendedor_usuario (vendedor_usuario_id),
+    CONSTRAINT fk_revendedor_usuario FOREIGN KEY (revendedor_usuario_id) REFERENCES usuarios (id) ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT fk_vendedor_usuario FOREIGN KEY (vendedor_usuario_id) REFERENCES usuarios (id) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS configuracion_correo (

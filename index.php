@@ -4377,6 +4377,127 @@ header('Expires: 0');
         `).join('');
     }
 
+    function getUserAssignmentsResellerSellersState() {
+        if (!appState.listTableState.userAssignmentsResellerSellers) {
+            appState.listTableState.userAssignmentsResellerSellers = {
+                query: '',
+                assignmentFilter: 'all',
+            };
+        }
+
+        return appState.listTableState.userAssignmentsResellerSellers;
+    }
+
+    function renderUserResellerSellersTable(user, { resetFilters = false } = {}) {
+        const allUsers = getUsers().filter((candidate) => Number(candidate.id) !== Number(user?.id));
+        const assignedSellerIds = new Set(normalizeArray(user?.seller_user_ids).map((sellerUserId) => Number(sellerUserId)));
+        const state = getUserAssignmentsResellerSellersState();
+
+        if (resetFilters) {
+            state.query = '';
+            state.assignmentFilter = 'all';
+        }
+
+        if (allUsers.length === 0) {
+            userAssignmentsResellerPane.innerHTML = '<div class="empty-state">No hay otros usuarios disponibles para asignar como vendedores.</div>';
+            return;
+        }
+
+        const assignedCount = allUsers.filter((candidate) => assignedSellerIds.has(Number(candidate.id))).length;
+        const normalizedQuery = state.query.trim().toLowerCase();
+        const filteredUsers = allUsers.filter((candidate) => {
+            const isAssigned = assignedSellerIds.has(Number(candidate.id));
+            const matchesAssignmentFilter = state.assignmentFilter === 'assigned'
+                ? isAssigned
+                : state.assignmentFilter === 'unassigned'
+                    ? !isAssigned
+                    : true;
+            const matchesQuery = normalizedQuery === ''
+                ? true
+                : [getUserDisplayName(candidate), candidate.username].join(' ').toLowerCase().includes(normalizedQuery);
+
+            return matchesAssignmentFilter && matchesQuery;
+        });
+
+        const filtersMarkup = `
+            <div class="row g-3 align-items-end mb-3">
+                <div class="col-12 col-lg-7">
+                    <label class="form-label small text-uppercase text-secondary mb-1" for="userAssignmentsResellerSearchInput">Buscar por usuario</label>
+                    <input
+                        class="form-control"
+                        id="userAssignmentsResellerSearchInput"
+                        type="search"
+                        placeholder="Nombre o @usuario"
+                        value="${escapeHtml(state.query)}"
+                        data-reseller-seller-search="1"
+                    >
+                </div>
+                <div class="col-12 col-lg-5">
+                    <label class="form-label small text-uppercase text-secondary mb-1" for="userAssignmentsResellerFilterSelect">Mostrar</label>
+                    <select class="form-select" id="userAssignmentsResellerFilterSelect" data-reseller-seller-filter="1">
+                        <option value="all" ${state.assignmentFilter === 'all' ? 'selected' : ''}>Todos los usuarios</option>
+                        <option value="assigned" ${state.assignmentFilter === 'assigned' ? 'selected' : ''}>Usuarios vendedores asignados</option>
+                        <option value="unassigned" ${state.assignmentFilter === 'unassigned' ? 'selected' : ''}>Usuarios no asignados</option>
+                    </select>
+                </div>
+            </div>
+        `;
+
+        userAssignmentsResellerPane.innerHTML = `
+            <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-2 mb-3">
+                <div>
+                    <h6 class="mb-1">Asignar vendedores</h6>
+                    <p class="text-secondary small mb-0">Marca los usuarios que podrán trabajar como vendedores para ${escapeHtml(getUserDisplayName(user))}.</p>
+                </div>
+                <div class="small text-secondary">${assignedCount} vendedor(es) asignado(s) de ${allUsers.length} usuario(s) disponibles</div>
+            </div>
+            ${filtersMarkup}
+            <div class="small text-secondary mb-3">${filteredUsers.length} usuario(s) visible(s) con los filtros actuales</div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th scope="col">Usuario</th>
+                            <th scope="col">Correo</th>
+                            <th scope="col">Tienda</th>
+                            <th scope="col">Tipo</th>
+                            <th scope="col" class="text-center">Marcar como Vendedor</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${filteredUsers.length === 0 ? `
+                            <tr>
+                                <td colspan="5"><div class="empty-state">No hay usuarios que coincidan con los filtros actuales.</div></td>
+                            </tr>
+                        ` : filteredUsers.map((candidate) => {
+                            const isAssigned = assignedSellerIds.has(Number(candidate.id));
+                            const isCandidateReseller = Number(candidate.revendedor) === 1;
+
+                            return `
+                                <tr>
+                                    <td>
+                                        <div class="fw-semibold">${escapeHtml(getUserDisplayName(candidate))}</div>
+                                        <div class="small text-secondary">@${escapeHtml(candidate.username)}</div>
+                                    </td>
+                                    <td>${escapeHtml(candidate.email)}</td>
+                                    <td>${escapeHtml(candidate.nombre_tienda || 'Sin tienda')}</td>
+                                    <td>
+                                        <span class="badge text-bg-${isCandidateReseller ? 'warning' : 'secondary'}">${isCandidateReseller ? 'Revendedor' : 'Usuario'}</span>
+                                    </td>
+                                    <td class="text-center">
+                                        <div class="form-check d-inline-flex justify-content-center m-0">
+                                            <input class="form-check-input" type="checkbox" data-toggle-reseller-seller="1" data-reseller-user-id="${escapeHtml(user.id)}" data-seller-user-id="${escapeHtml(candidate.id)}" ${isAssigned ? 'checked' : ''}>
+                                        </div>
+                                    </td>
+                                </tr>
+                            `;
+                        }).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+    }
+
     function activateUserAssignmentsTab(tabName = 'accounts') {
         const showAccounts = tabName !== 'resellers';
         appState.userAssignmentsActiveTab = showAccounts ? 'accounts' : 'resellers';
@@ -4396,9 +4517,12 @@ header('Expires: 0');
         userAssignmentsModalSubtitle.textContent = `${assignments.length} cuenta(s) asignada(s) en total`;
         userAssignmentsResellerCheckbox.checked = isReseller;
         userAssignmentsTabsWrapper.classList.toggle('d-none', !isReseller);
-        userAssignmentsResellerPane.innerHTML = isReseller
-            ? `<div class="empty-state">El módulo Asignar Vendedores se configurará para ${escapeHtml(getUserDisplayName(user))} en el siguiente paso.</div>`
-            : '<div class="empty-state">Aquí se configurará el módulo Asignar Vendedores.</div>';
+
+        if (isReseller) {
+            renderUserResellerSellersTable(user, { resetFilters: resetSearch });
+        } else {
+            userAssignmentsResellerPane.innerHTML = '<div class="empty-state">Aquí se configurará el módulo Asignar Vendedores.</div>';
+        }
 
         if (!isReseller) {
             activateUserAssignmentsTab('accounts');
@@ -4418,6 +4542,23 @@ header('Expires: 0');
 
         user.revendedor = isReseller ? 1 : 0;
         return user;
+    }
+
+    function updateLocalResellerSellerAssignment(resellerUserId, sellerUserId, isAssigned) {
+        const resellerUser = getUserById(resellerUserId);
+
+        if (!resellerUser) {
+            return null;
+        }
+
+        const normalizedSellerUserId = Number(sellerUserId);
+        const sellerIds = normalizeArray(resellerUser.seller_user_ids).map((value) => Number(value));
+        const nextSellerIds = isAssigned
+            ? Array.from(new Set([...sellerIds, normalizedSellerUserId]))
+            : sellerIds.filter((value) => value !== normalizedSellerUserId);
+
+        resellerUser.seller_user_ids = nextSellerIds;
+        return resellerUser;
     }
 
     function openConfirmModal({ title, message, confirmText = 'Aceptar', confirmClass = 'btn-danger' }) {
@@ -6017,6 +6158,96 @@ header('Expires: 0');
         } finally {
             userAssignmentsResellerCheckbox.disabled = false;
         }
+    });
+
+    userAssignmentsResellerPane.addEventListener('change', async (event) => {
+        const filterSelect = event.target.closest('[data-reseller-seller-filter]');
+
+        if (filterSelect) {
+            const currentUserId = appState.selectedUserAssignmentsUserId;
+
+            if (currentUserId === null) {
+                return;
+            }
+
+            const user = getUserById(currentUserId);
+
+            if (!user) {
+                return;
+            }
+
+            const state = getUserAssignmentsResellerSellersState();
+            state.assignmentFilter = filterSelect.value === 'assigned' || filterSelect.value === 'unassigned' ? filterSelect.value : 'all';
+            renderUserResellerSellersTable(user);
+            return;
+        }
+
+        const checkbox = event.target.closest('[data-toggle-reseller-seller]');
+
+        if (!checkbox) {
+            return;
+        }
+
+        const resellerUserId = Number(checkbox.dataset.resellerUserId || 0);
+        const sellerUserId = Number(checkbox.dataset.sellerUserId || 0);
+        const assigned = checkbox.checked;
+
+        if (resellerUserId <= 0 || sellerUserId <= 0) {
+            checkbox.checked = !assigned;
+            return;
+        }
+
+        checkbox.disabled = true;
+        showAdminStatus(assigned ? 'Asignando vendedor al revendedor...' : 'Quitando vendedor del revendedor...', 'secondary');
+
+        try {
+            const formData = new FormData();
+            formData.append('action', 'set_reseller_seller');
+            formData.append('revendedor_usuario_id', String(resellerUserId));
+            formData.append('vendedor_usuario_id', String(sellerUserId));
+            formData.append('assigned', assigned ? '1' : '0');
+
+            const result = await requestJson('./api/admin/users.php', {
+                method: 'POST',
+                body: formData,
+            });
+
+            const user = updateLocalResellerSellerAssignment(resellerUserId, sellerUserId, Number(result.assigned) === 1);
+
+            if (user && appState.selectedUserAssignmentsUserId === resellerUserId) {
+                renderUserAssignmentsModal(user);
+            }
+
+            showAdminStatus(result.message, 'success');
+        } catch (error) {
+            checkbox.checked = !assigned;
+            checkbox.disabled = false;
+            showAdminStatus(error.message, 'danger');
+        }
+    });
+
+    userAssignmentsResellerPane.addEventListener('input', (event) => {
+        const searchInput = event.target.closest('[data-reseller-seller-search]');
+
+        if (!searchInput) {
+            return;
+        }
+
+        const currentUserId = appState.selectedUserAssignmentsUserId;
+
+        if (currentUserId === null) {
+            return;
+        }
+
+        const user = getUserById(currentUserId);
+
+        if (!user) {
+            return;
+        }
+
+        const state = getUserAssignmentsResellerSellersState();
+        state.query = searchInput.value;
+        renderUserResellerSellersTable(user);
     });
 
     userAssignmentsPageSize.addEventListener('change', () => {
