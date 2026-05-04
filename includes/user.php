@@ -467,3 +467,86 @@ function unassignResellerAccountFromSellerUser(array $input): array
 
     return deleteUserAccountAssignmentById($pdo, $assignmentId);
 }
+
+function bulkUnassignResellerAccountsFromSellerUsersByService(array $input): array
+{
+    $authenticatedUser = requireRegisteredUser();
+    $serviceId = (int) ($input['servicio_id'] ?? 0);
+    $assignmentIds = array_values(array_filter(array_map('intval', (array) ($input['assignment_ids'] ?? [])), static fn(int $value): bool => $value > 0));
+    $userIds = array_values(array_filter(array_map('intval', (array) ($input['usuario_ids'] ?? [])), static fn(int $value): bool => $value > 0));
+
+    if ($serviceId <= 0 || ($assignmentIds === [] && $userIds === [])) {
+        return ['success' => false, 'message' => 'Debes indicar el servicio y al menos una asignación para desasignar.'];
+    }
+
+    $pdo = getPdo();
+    $scope = fetchResellerModuleScope($pdo, (int) $authenticatedUser['id']);
+
+    if (!$scope['enabled']) {
+        return ['success' => false, 'message' => 'Solo los usuarios marcados como revendedores pueden administrar estas asignaciones.'];
+    }
+
+    $allowedUserIds = $scope['seller_user_ids'];
+    foreach ($userIds as $userId) {
+        if (!in_array($userId, $allowedUserIds, true)) {
+            return ['success' => false, 'message' => 'Uno de los usuarios seleccionados no pertenece a los vendedores asignados a este revendedor.'];
+        }
+    }
+
+    $service = null;
+    foreach ($scope['services'] as $candidateService) {
+        if ((int) ($candidateService['id'] ?? 0) === $serviceId) {
+            $service = $candidateService;
+            break;
+        }
+    }
+
+    if ($service === null) {
+        return ['success' => false, 'message' => 'El servicio indicado no pertenece al alcance de este revendedor.'];
+    }
+
+    $accountIds = array_values(array_map(static fn(array $account): int => (int) ($account['id'] ?? 0), (array) ($service['accounts'] ?? [])));
+    $accountIds = array_values(array_filter($accountIds, static fn(int $value): bool => $value > 0));
+
+    if ($accountIds === []) {
+        return ['success' => false, 'message' => 'El servicio indicado no tiene cuentas disponibles para este revendedor.'];
+    }
+
+    if ($assignmentIds !== []) {
+        $assignments = fetchUserAccountAssignmentsByIds($pdo, $assignmentIds);
+
+        if (count($assignments) !== count(array_unique($assignmentIds))) {
+            return ['success' => false, 'message' => 'Una de las asignaciones seleccionadas ya no existe.'];
+        }
+
+        foreach ($assignments as $assignment) {
+            if (!in_array((int) $assignment['usuario_id'], $allowedUserIds, true) || !in_array((int) $assignment['cuenta_servicio_id'], $accountIds, true)) {
+                return ['success' => false, 'message' => 'Una de las asignaciones seleccionadas está fuera del alcance de este revendedor.'];
+            }
+        }
+
+        $result = deleteUserAccountAssignmentsByIds($pdo, $assignmentIds);
+        $result['selected_assignments_count'] = count($assignmentIds);
+        $result['servicio_id'] = $serviceId;
+
+        if ($result['success']) {
+            $result['message'] = count($assignmentIds) === 1
+                ? 'Se desasignó la cuenta seleccionada del servicio.'
+                : 'Se desasignaron las cuentas seleccionadas del servicio.';
+        }
+
+        return $result;
+    }
+
+    $result = deleteUserAccountAssignmentsByAccountIdsAndUserIds($pdo, $accountIds, $userIds);
+    $result['selected_users_count'] = count($userIds);
+    $result['servicio_id'] = $serviceId;
+
+    if ($result['success']) {
+        $result['message'] = count($userIds) === 1
+            ? 'Se desasignó el usuario seleccionado del servicio.'
+            : 'Se desasignaron los usuarios seleccionados del servicio.';
+    }
+
+    return $result;
+}

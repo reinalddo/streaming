@@ -19,6 +19,8 @@ try {
         $result = assignResellerAccountToSellerUser($_POST);
     } elseif ($action === 'unassign') {
         $result = unassignResellerAccountFromSellerUser($_POST);
+    } elseif ($action === 'bulk_unassign') {
+        $result = bulkUnassignResellerAccountsFromSellerUsersByService($_POST);
     } else {
         http_response_code(422);
         echo json_encode(['success' => false, 'message' => 'Acción no válida.'], JSON_UNESCAPED_UNICODE);

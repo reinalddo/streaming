@@ -31,6 +31,21 @@ function fetchUserAccountAssignmentById(PDO $pdo, int $assignmentId): ?array
     return $assignment === false ? null : $assignment;
 }
 
+function fetchUserAccountAssignmentsByIds(PDO $pdo, array $assignmentIds): array
+{
+    $normalizedAssignmentIds = array_values(array_unique(array_map('intval', $assignmentIds)));
+
+    if ($normalizedAssignmentIds === []) {
+        return [];
+    }
+
+    $placeholders = implode(',', array_fill(0, count($normalizedAssignmentIds), '?'));
+    $stmt = $pdo->prepare("SELECT id, usuario_id, cuenta_servicio_id FROM usuario_cuentas_servicio WHERE id IN ($placeholders)");
+    $stmt->execute($normalizedAssignmentIds);
+
+    return $stmt->fetchAll();
+}
+
 function deleteUserAccountAssignmentById(PDO $pdo, int $assignmentId): array
 {
     $stmt = $pdo->prepare('DELETE FROM usuario_cuentas_servicio WHERE id = :id');
@@ -41,4 +56,54 @@ function deleteUserAccountAssignmentById(PDO $pdo, int $assignmentId): array
     }
 
     return ['success' => true, 'message' => 'Cuenta desasignada correctamente.'];
+}
+
+function deleteUserAccountAssignmentsByIds(PDO $pdo, array $assignmentIds): array
+{
+    $normalizedAssignmentIds = array_values(array_unique(array_map('intval', $assignmentIds)));
+
+    if ($normalizedAssignmentIds === []) {
+        return [
+            'success' => false,
+            'message' => 'Debes indicar al menos una asignación válida para desasignar.',
+            'removed_assignments' => 0,
+        ];
+    }
+
+    $placeholders = implode(',', array_fill(0, count($normalizedAssignmentIds), '?'));
+    $stmt = $pdo->prepare("DELETE FROM usuario_cuentas_servicio WHERE id IN ($placeholders)");
+    $stmt->execute($normalizedAssignmentIds);
+
+    return [
+        'success' => $stmt->rowCount() > 0,
+        'message' => $stmt->rowCount() > 0 ? 'Asignaciones desasignadas correctamente.' : 'No se encontraron asignaciones para desasignar.',
+        'removed_assignments' => $stmt->rowCount(),
+    ];
+}
+
+function deleteUserAccountAssignmentsByAccountIdsAndUserIds(PDO $pdo, array $accountIds, array $userIds): array
+{
+    $normalizedAccountIds = array_values(array_unique(array_map('intval', $accountIds)));
+    $normalizedUserIds = array_values(array_unique(array_map('intval', $userIds)));
+
+    if ($normalizedAccountIds === [] || $normalizedUserIds === []) {
+        return [
+            'success' => false,
+            'message' => 'Debes indicar cuentas y usuarios válidos para desasignar.',
+            'removed_assignments' => 0,
+        ];
+    }
+
+    $accountPlaceholders = implode(',', array_fill(0, count($normalizedAccountIds), '?'));
+    $userPlaceholders = implode(',', array_fill(0, count($normalizedUserIds), '?'));
+    $stmt = $pdo->prepare(
+        "DELETE FROM usuario_cuentas_servicio WHERE cuenta_servicio_id IN ($accountPlaceholders) AND usuario_id IN ($userPlaceholders)"
+    );
+    $stmt->execute([...$normalizedAccountIds, ...$normalizedUserIds]);
+
+    return [
+        'success' => $stmt->rowCount() > 0,
+        'message' => $stmt->rowCount() > 0 ? 'Usuarios desasignados correctamente.' : 'No se encontraron asignaciones para desasignar.',
+        'removed_assignments' => $stmt->rowCount(),
+    ];
 }

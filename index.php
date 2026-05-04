@@ -3554,10 +3554,96 @@ header('Expires: 0');
                 query: '',
                 page: 1,
                 pageSize: 5,
+                selectAllFiltered: false,
+                selectedAssignmentIds: [],
             };
         }
 
         return appState.assignmentTableState[normalizedServiceId];
+    }
+
+    function clearAssignmentSelectionState(serviceId, scope = 'admin') {
+        const state = getAssignmentTableState(serviceId, scope);
+        state.selectAllFiltered = false;
+        state.selectedAssignmentIds = [];
+    }
+
+    function getUniqueAssignmentIds(rows) {
+        return Array.from(new Set(normalizeArray(rows).map((row) => Number(row.assignment_id)).filter((assignmentId) => assignmentId > 0)));
+    }
+
+    function getEffectiveSelectedAssignmentIds(state, filteredRows) {
+        const filteredAssignmentIds = getUniqueAssignmentIds(filteredRows);
+
+        if (state.selectAllFiltered) {
+            return filteredAssignmentIds;
+        }
+
+        const selectedIds = new Set(normalizeArray(state.selectedAssignmentIds).map((value) => Number(value)));
+        return filteredAssignmentIds.filter((assignmentId) => selectedIds.has(assignmentId));
+    }
+
+    function getPaginatedServiceAssignmentRows(service, scope = 'admin') {
+        const state = getAssignmentTableState(service.id, scope);
+        const filteredRows = getFilteredServiceAssignmentRows(service, scope);
+        const totalRows = filteredRows.length;
+        const totalPages = Math.max(1, Math.ceil(totalRows / state.pageSize));
+
+        if (state.page > totalPages) {
+            state.page = totalPages;
+        }
+
+        const startIndex = totalRows === 0 ? 0 : (state.page - 1) * state.pageSize;
+        const paginatedRows = filteredRows.slice(startIndex, startIndex + state.pageSize);
+
+        return {
+            filteredRows,
+            paginatedRows,
+            totalRows,
+            totalPages,
+            startIndex,
+        };
+    }
+
+    function buildBulkAssignmentSelectionContext(service, filteredRows, paginatedRows, scope = 'admin') {
+        const state = getAssignmentTableState(service.id, scope);
+        const filteredAssignmentIds = getUniqueAssignmentIds(filteredRows);
+        const paginatedAssignmentIds = getUniqueAssignmentIds(paginatedRows);
+        const effectiveAssignmentIds = getEffectiveSelectedAssignmentIds(state, filteredRows);
+        const effectiveAssignmentIdSet = new Set(effectiveAssignmentIds);
+        const selectedAssignmentsOnPageCount = paginatedAssignmentIds.filter((assignmentId) => effectiveAssignmentIdSet.has(assignmentId)).length;
+
+        return {
+            filteredAssignmentIds,
+            paginatedAssignmentIds,
+            effectiveAssignmentIds,
+            isAllSelected: filteredAssignmentIds.length > 0 && effectiveAssignmentIds.length === filteredAssignmentIds.length,
+            isIndeterminate: effectiveAssignmentIds.length > 0 && effectiveAssignmentIds.length < filteredAssignmentIds.length,
+            isCurrentPageAllSelected: paginatedAssignmentIds.length > 0 && selectedAssignmentsOnPageCount === paginatedAssignmentIds.length,
+            isCurrentPageIndeterminate: selectedAssignmentsOnPageCount > 0 && selectedAssignmentsOnPageCount < paginatedAssignmentIds.length,
+            hasSelection: effectiveAssignmentIds.length > 0,
+            isSelectAllOnly: state.selectAllFiltered && effectiveAssignmentIds.length === filteredAssignmentIds.length && filteredAssignmentIds.length > 0,
+        };
+    }
+
+    function getFilteredServiceAssignmentRows(service, scope = 'admin') {
+        const state = getAssignmentTableState(service.id, scope);
+        const allRows = getServiceAssignmentRows(service);
+        const normalizedQuery = state.query.trim().toLowerCase();
+
+        return allRows.filter((row) => {
+            const haystack = [
+                row.nombre_tienda || '',
+                row.nombre,
+                row.apellido,
+                row.username,
+                row.email,
+                row.account_email,
+                row.description,
+            ].join(' ').toLowerCase();
+
+            return haystack.includes(normalizedQuery);
+        });
     }
 
     function getScopedServiceAssignUsersState(scope = 'admin') {
@@ -5283,33 +5369,12 @@ header('Expires: 0');
 
     function renderServiceAssignmentsAccordion(service, scope = 'admin') {
         const state = getAssignmentTableState(service.id, scope);
-        const allRows = getServiceAssignmentRows(service);
-        const normalizedQuery = state.query.trim().toLowerCase();
-        const filteredRows = allRows.filter((row) => {
-            const haystack = [
-                row.nombre_tienda || '',
-                row.nombre,
-                row.apellido,
-                row.username,
-                row.email,
-                row.account_email,
-                row.description,
-            ].join(' ').toLowerCase();
-
-            return haystack.includes(normalizedQuery);
-        });
-
-        const totalRows = filteredRows.length;
-        const totalPages = Math.max(1, Math.ceil(totalRows / state.pageSize));
-        if (state.page > totalPages) {
-            state.page = totalPages;
-        }
-
-        const startIndex = totalRows === 0 ? 0 : (state.page - 1) * state.pageSize;
-        const paginatedRows = filteredRows.slice(startIndex, startIndex + state.pageSize);
+        const { filteredRows, paginatedRows, totalRows, totalPages, startIndex } = getPaginatedServiceAssignmentRows(service, scope);
         const summary = totalRows === 0
             ? 'No hay resultados para los filtros actuales.'
             : `Mostrando ${startIndex + 1}-${Math.min(startIndex + state.pageSize, totalRows)} de ${totalRows} asignación(es)`;
+        const selectionContext = buildBulkAssignmentSelectionContext(service, filteredRows, paginatedRows, scope);
+        const effectiveSelectedAssignmentIds = new Set(selectionContext.effectiveAssignmentIds);
 
         const tableMarkup = totalRows === 0
             ? '<div class="empty-state">Este servicio aún no tiene usuarios asignados.</div>'
@@ -5319,6 +5384,11 @@ header('Expires: 0');
                         <table class="table table-hover align-middle mb-0">
                             <thead>
                                 <tr>
+                                    <th>
+                                        <div class="form-check d-inline-flex justify-content-center m-0">
+                                            <input class="form-check-input" type="checkbox" data-assignment-row-select-all="${service.id}" data-assignment-scope="${scope}" ${selectionContext.isCurrentPageAllSelected ? 'checked' : ''} ${selectionContext.isCurrentPageIndeterminate ? 'data-indeterminate="1"' : ''}>
+                                        </div>
+                                    </th>
                                     <th>Tienda / Usuario</th>
                                     <th>Usuario</th>
                                     <th>Correo</th>
@@ -5330,6 +5400,11 @@ header('Expires: 0');
                             <tbody>
                                 ${paginatedRows.map((row) => `
                                     <tr>
+                                        <td>
+                                            <div class="form-check d-inline-flex justify-content-center m-0">
+                                                <input class="form-check-input" type="checkbox" data-assignment-row-select="${service.id}" data-assignment-id="${row.assignment_id}" data-assignment-scope="${scope}" ${effectiveSelectedAssignmentIds.has(Number(row.assignment_id)) ? 'checked' : ''}>
+                                            </div>
+                                        </td>
                                         <td>${escapeHtml(getUserDisplayName(row))}</td>
                                         <td>@${escapeHtml(row.username)}</td>
                                         <td>${escapeHtml(row.email)}</td>
@@ -5339,7 +5414,7 @@ header('Expires: 0');
                                         </td>
                                         <td>${escapeHtml(row.description || 'Sin descripción')}</td>
                                         <td>
-                                            <button class="btn btn-sm btn-outline-danger" type="button" data-unassign-id="${row.assignment_id}" data-assignment-scope="${scope}">Desasignar</button>
+                                            <button class="btn btn-sm btn-outline-danger" type="button" data-unassign-id="${row.assignment_id}" data-service-id="${service.id}" data-assignment-scope="${scope}">Desasignar</button>
                                         </td>
                                     </tr>
                                 `).join('')}
@@ -5352,7 +5427,12 @@ header('Expires: 0');
         return `
             <div class="table-toolbar">
                 <div class="d-flex gap-2 flex-wrap align-items-center">
+                    <div class="form-check me-2">
+                        <input class="form-check-input" type="checkbox" id="assignmentSelectAll${scope}${service.id}" data-assignment-select-all-top="${service.id}" data-assignment-scope="${scope}" ${selectionContext.isAllSelected ? 'checked' : ''} ${selectionContext.hasSelection && !selectionContext.isAllSelected ? 'data-indeterminate="1"' : ''}>
+                        <label class="form-check-label" for="assignmentSelectAll${scope}${service.id}">Seleccionar Todos</label>
+                    </div>
                     <input class="form-control" type="search" value="${escapeHtml(state.query)}" placeholder="Filtrar por usuario, correo o cuenta" data-service-filter="${service.id}" data-assignment-scope="${scope}">
+                    ${selectionContext.hasSelection ? `<button class="btn btn-sm btn-outline-danger" type="button" data-bulk-unassign-service="${service.id}" data-assignment-scope="${scope}">Desasignar en Grupo</button>` : ''}
                 </div>
                 <div class="d-flex gap-2 align-items-center flex-wrap">
                     <label class="small text-secondary" for="servicePageSize${service.id}">Filas por página</label>
@@ -5429,6 +5509,10 @@ header('Expires: 0');
                 </tr>
             `;
         }).join('');
+
+        targetTableBody.querySelectorAll('[data-indeterminate="1"]').forEach((input) => {
+            input.indeterminate = true;
+        });
     }
 
     function rerenderServiceAssignmentsAndRestoreFilterFocus(serviceId, selectionStart = null, selectionEnd = null, scope = 'admin') {
@@ -6849,6 +6933,7 @@ header('Expires: 0');
         const toggleButton = event.target.closest('[data-toggle-service-users]');
         const openAssignButton = event.target.closest('[data-open-service-assign]');
         const pageNavButton = event.target.closest('[data-service-page-nav]');
+        const bulkUnassignButton = event.target.closest('[data-bulk-unassign-service]');
         const unassignButton = event.target.closest('[data-unassign-id]');
 
         if (toggleButton) {
@@ -6874,6 +6959,65 @@ header('Expires: 0');
             return;
         }
 
+        if (bulkUnassignButton) {
+            const serviceId = Number(bulkUnassignButton.dataset.bulkUnassignService || 0);
+            const service = getServiceByIdForScope(serviceId, scope);
+
+            if (!service) {
+                return;
+            }
+
+            const filteredRows = getFilteredServiceAssignmentRows(service, scope);
+            const { paginatedRows } = getPaginatedServiceAssignmentRows(service, scope);
+            const selectionContext = buildBulkAssignmentSelectionContext(service, filteredRows, paginatedRows, scope);
+
+            if (!selectionContext.hasSelection) {
+                return;
+            }
+
+            const confirmed = await openConfirmModal({
+                title: 'Desasignar en Grupo',
+                message: selectionContext.isSelectAllOnly
+                    ? `Se desasignarán ${selectionContext.effectiveAssignmentIds.length} asignación(es), que cumplen con el filtro propuesto.`
+                    : `Se desasignarán las ${selectionContext.effectiveAssignmentIds.length} asignación(es) seleccionadas.`,
+                confirmText: 'Desasignar',
+                confirmClass: 'btn btn-danger',
+            });
+
+            if (!confirmed) {
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('action', 'bulk_unassign');
+            formData.append('servicio_id', String(serviceId));
+            selectionContext.effectiveAssignmentIds.forEach((assignmentId) => {
+                formData.append('assignment_ids[]', String(assignmentId));
+            });
+
+            showScopeStatus(scope, 'Desasignando usuarios en grupo...', 'secondary');
+
+            try {
+                const result = await requestJson(getAssignmentEndpointByScope(scope), {
+                    method: 'POST',
+                    body: formData,
+                });
+
+                clearAssignmentSelectionState(serviceId, scope);
+                showScopeStatus(scope, result.message, 'success');
+
+                if (scope === 'reseller') {
+                    await loadUserModuleOverview();
+                } else {
+                    await loadAdminOverview();
+                }
+            } catch (error) {
+                showScopeStatus(scope, error.message, 'danger');
+            }
+
+            return;
+        }
+
         if (!unassignButton) {
             return;
         }
@@ -6892,6 +7036,7 @@ header('Expires: 0');
         const formData = new FormData();
         formData.append('action', 'unassign');
         formData.append('assignment_id', unassignButton.dataset.unassignId);
+        const serviceId = Number(unassignButton.dataset.serviceId || 0);
         showScopeStatus(scope, 'Desasignando cuenta...', 'secondary');
 
         try {
@@ -6899,6 +7044,10 @@ header('Expires: 0');
                 method: 'POST',
                 body: formData,
             });
+
+            if (serviceId > 0) {
+                clearAssignmentSelectionState(serviceId, scope);
+            }
 
             showScopeStatus(scope, result.message, 'success');
 
@@ -6947,7 +7096,85 @@ header('Expires: 0');
     });
 
     function handleServiceAssignmentsTableChange(event, scope = 'admin') {
+        const selectAllTopCheckbox = event.target.closest('[data-assignment-select-all-top]');
+        const selectAllTableCheckbox = event.target.closest('[data-assignment-row-select-all]');
+        const rowCheckbox = event.target.closest('[data-assignment-row-select]');
         const pageSizeSelect = event.target.closest('[data-service-page-size]');
+
+        const selectAllCheckbox = selectAllTopCheckbox || selectAllTableCheckbox;
+
+        if (selectAllCheckbox) {
+            const serviceId = Number((selectAllCheckbox.dataset.assignmentSelectAllTop || selectAllCheckbox.dataset.assignmentRowSelectAll || 0));
+            const state = getAssignmentTableState(serviceId, scope);
+            const service = getServiceByIdForScope(serviceId, scope);
+
+            if (!service) {
+                return;
+            }
+
+            if (selectAllCheckbox.checked && selectAllTopCheckbox) {
+                state.selectAllFiltered = true;
+                state.selectedAssignmentIds = [];
+            } else if (selectAllCheckbox.checked) {
+                const { paginatedRows } = getPaginatedServiceAssignmentRows(service, scope);
+                state.selectAllFiltered = false;
+                state.selectedAssignmentIds = getUniqueAssignmentIds(paginatedRows);
+            } else {
+                if (selectAllTopCheckbox) {
+                    clearAssignmentSelectionState(serviceId, scope);
+                } else {
+                    const { paginatedRows } = getPaginatedServiceAssignmentRows(service, scope);
+                    const paginatedAssignmentIds = new Set(getUniqueAssignmentIds(paginatedRows));
+                    const selectedAssignmentIds = new Set(normalizeArray(state.selectedAssignmentIds).map((value) => Number(value)));
+
+                    paginatedAssignmentIds.forEach((assignmentId) => {
+                        selectedAssignmentIds.delete(assignmentId);
+                    });
+
+                    state.selectAllFiltered = false;
+                    state.selectedAssignmentIds = Array.from(selectedAssignmentIds);
+                }
+            }
+
+            renderServiceAssignmentTable(scope);
+            return;
+        }
+
+        if (rowCheckbox) {
+            const serviceId = Number(rowCheckbox.dataset.assignmentRowSelect || 0);
+            const assignmentId = Number(rowCheckbox.dataset.assignmentId || 0);
+            const state = getAssignmentTableState(serviceId, scope);
+            const service = getServiceByIdForScope(serviceId, scope);
+
+            if (serviceId <= 0 || assignmentId <= 0 || !service) {
+                return;
+            }
+
+            if (state.selectAllFiltered) {
+                const { paginatedRows } = getPaginatedServiceAssignmentRows(service, scope);
+                const selectedAssignmentIds = new Set(getUniqueAssignmentIds(paginatedRows));
+
+                if (!rowCheckbox.checked) {
+                    selectedAssignmentIds.delete(assignmentId);
+                }
+
+                state.selectAllFiltered = false;
+                state.selectedAssignmentIds = Array.from(selectedAssignmentIds);
+            } else {
+                const selectedIds = new Set(normalizeArray(state.selectedAssignmentIds).map((value) => Number(value)));
+
+                if (rowCheckbox.checked) {
+                    selectedIds.add(assignmentId);
+                } else {
+                    selectedIds.delete(assignmentId);
+                }
+
+                state.selectedAssignmentIds = Array.from(selectedIds);
+            }
+
+            renderServiceAssignmentTable(scope);
+            return;
+        }
 
         if (!pageSizeSelect) {
             return;
