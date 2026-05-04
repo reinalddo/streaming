@@ -5021,31 +5021,10 @@ header('Expires: 0');
         }
 
         const serviceAccounts = normalizeArray(service.accounts);
+        const serviceAccountIds = new Set(serviceAccounts.map((account) => Number(account.id)));
+        const selectedAccountId = Number(serviceAssignAccountSelect.value || 0);
         const state = getListTableState('serviceAssignUsers');
         const searchQuery = state.query.trim().toLowerCase();
-        const filteredServiceAccounts = searchQuery === ''
-            ? serviceAccounts
-            : serviceAccounts.filter((account) => {
-                const haystack = [
-                    account.correo_acceso || '',
-                    account.descripcion || '',
-                ].join(' ').toLowerCase();
-
-                return haystack.includes(searchQuery);
-            });
-        const previousSelectedAccountId = String(serviceAssignAccountSelect.value || '');
-        const selectedAccountIdValue = filteredServiceAccounts.some((account) => String(account.id) === previousSelectedAccountId)
-            ? previousSelectedAccountId
-            : (filteredServiceAccounts[0] ? String(filteredServiceAccounts[0].id) : '');
-
-        serviceAssignAccountSelect.innerHTML = filteredServiceAccounts.length > 0
-            ? filteredServiceAccounts.map((account) => `<option value="${account.id}">${escapeHtml(account.correo_acceso)}${account.descripcion ? ` · ${escapeHtml(account.descripcion)}` : ''}</option>`).join('')
-            : '<option value="">No hay cuentas que coincidan con la búsqueda</option>';
-        serviceAssignAccountSelect.disabled = filteredServiceAccounts.length === 0;
-        serviceAssignAccountSelect.value = selectedAccountIdValue;
-
-        const serviceAccountIds = new Set(serviceAccounts.map((account) => Number(account.id)));
-        const selectedAccountId = Number(selectedAccountIdValue || 0);
 
         if (serviceAccounts.length === 0) {
             serviceAssignUsersTableBody.innerHTML = '<tr><td colspan="5"><div class="empty-state">Primero crea al menos una cuenta para este servicio y luego podras asignar usuarios.</div></td></tr>';
