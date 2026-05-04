@@ -2585,6 +2585,17 @@ header('Expires: 0');
                             <input class="form-control" type="email" id="userProfileEmail" name="email" placeholder="usuario@dominio.com" required>
                         </div>
                     </div>
+                    <div class="col-12 col-md-6">
+                        <label class="form-label" for="userProfilePassword">Nueva contraseña</label>
+                        <div class="input-group field-input-group">
+                            <span class="input-group-text"><i class="bi bi-shield-lock"></i></span>
+                            <input class="form-control" type="password" id="userProfilePassword" name="password" placeholder="Déjala vacía si no deseas cambiarla">
+                            <button class="password-toggle" type="button" data-password-target="userProfilePassword" aria-label="Mostrar clave">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                        </div>
+                        <div class="form-text">Solo se actualizará si escribes una nueva clave de al menos 6 caracteres.</div>
+                    </div>
                     <div class="col-12 col-md-6 col-xl-4">
                         <label class="form-label" for="userProfileFacebook">Facebook</label>
                         <div class="input-group field-input-group">
@@ -2902,6 +2913,7 @@ header('Expires: 0');
     const userProfileTelefono = document.getElementById('userProfileTelefono');
     const userProfileStoreName = document.getElementById('userProfileStoreName');
     const userProfileEmail = document.getElementById('userProfileEmail');
+    const userProfilePassword = document.getElementById('userProfilePassword');
     const userProfileFacebook = document.getElementById('userProfileFacebook');
     const userProfileInstagram = document.getElementById('userProfileInstagram');
     const userProfileTiktok = document.getElementById('userProfileTiktok');
@@ -3566,12 +3578,108 @@ header('Expires: 0');
         userProfileTelefono.value = profile.telefono || '';
         userProfileStoreName.value = profile.nombre_tienda || '';
         userProfileEmail.value = profile.email || '';
+        userProfilePassword.value = '';
         userProfileFacebook.value = profile.facebook || '';
         userProfileInstagram.value = profile.instagram || '';
         userProfileTiktok.value = profile.tiktok || '';
         userProfileWhatsapp.value = profile.whatsapp || '';
         userProfileTelegram.value = profile.telegram || '';
         userProfilePhoto.value = '';
+    }
+
+    async function copyTextToClipboard(text, sourceField = null) {
+        if (text === '') {
+            return false;
+        }
+
+        const fieldToSelect = sourceField instanceof HTMLInputElement || sourceField instanceof HTMLTextAreaElement
+            ? sourceField
+            : null;
+
+        const previousActiveElement = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+        let copied = false;
+
+        if (fieldToSelect) {
+            try {
+                fieldToSelect.focus({ preventScroll: true });
+            } catch (error) {
+                fieldToSelect.focus();
+            }
+
+            fieldToSelect.removeAttribute('disabled');
+            fieldToSelect.select();
+            if (typeof fieldToSelect.setSelectionRange === 'function') {
+                fieldToSelect.setSelectionRange(0, fieldToSelect.value.length);
+            }
+
+            try {
+                copied = document.execCommand('copy');
+            } catch (error) {
+                copied = false;
+            }
+        }
+
+        if (!copied && navigator.clipboard && window.isSecureContext) {
+            try {
+                await navigator.clipboard.writeText(text);
+                copied = true;
+            } catch (error) {
+                // Fall through to legacy copy support below.
+            }
+        }
+
+        if (!copied) {
+            const helperField = document.createElement('textarea');
+            helperField.value = text;
+            helperField.setAttribute('readonly', 'readonly');
+            helperField.style.position = 'fixed';
+            helperField.style.top = '0';
+            helperField.style.left = '0';
+            helperField.style.width = '1px';
+            helperField.style.height = '1px';
+            helperField.style.padding = '0';
+            helperField.style.border = '0';
+            helperField.style.outline = '0';
+            helperField.style.boxShadow = 'none';
+            helperField.style.background = 'transparent';
+            helperField.style.opacity = '0';
+            document.body.appendChild(helperField);
+            helperField.focus();
+            helperField.select();
+            helperField.setSelectionRange(0, helperField.value.length);
+
+            try {
+                copied = document.execCommand('copy');
+            } catch (error) {
+                copied = false;
+            }
+
+            document.body.removeChild(helperField);
+        }
+
+        if (copied && navigator.clipboard && typeof navigator.clipboard.readText === 'function' && window.isSecureContext) {
+            try {
+                const clipboardText = await navigator.clipboard.readText();
+                copied = clipboardText === text;
+            } catch (error) {
+                // Keep the previous result when read access is unavailable.
+            }
+        }
+
+        if (fieldToSelect) {
+            fieldToSelect.setSelectionRange(0, 0);
+            fieldToSelect.blur();
+        }
+
+        if (previousActiveElement) {
+            try {
+                previousActiveElement.focus({ preventScroll: true });
+            } catch (error) {
+                previousActiveElement.focus();
+            }
+        }
+
+        return copied;
     }
 
     function renderUserModuleEmptyState(message) {
@@ -5432,14 +5540,16 @@ header('Expires: 0');
             return;
         }
 
-        try {
-            await navigator.clipboard.writeText(passwordRevealField.value);
+        const copied = await copyTextToClipboard(passwordRevealField.value, passwordRevealField);
+
+        if (copied) {
             copyPasswordRevealButton.textContent = 'Copiada';
-        } catch (error) {
-            passwordRevealField.focus();
-            passwordRevealField.select();
-            copyPasswordRevealButton.textContent = 'Seleccionada';
+            return;
         }
+
+        passwordRevealField.focus();
+        passwordRevealField.select();
+        copyPasswordRevealButton.textContent = 'No se pudo copiar';
     });
 
     passwordRevealModalElement.addEventListener('hidden.bs.modal', () => {

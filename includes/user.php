@@ -119,6 +119,7 @@ function updateCurrentUserProfile(array $input, array $files = []): array
     $username = trim((string) ($input['username'] ?? ''));
     $email = strtolower(trim((string) ($input['email'] ?? '')));
     $phone = trim((string) ($input['telefono'] ?? ''));
+    $password = (string) ($input['password'] ?? '');
     $extraProfileData = normalizeUserExtraProfileInput($input);
 
     if ($name === '' || $lastName === '' || $username === '' || $email === '' || $phone === '') {
@@ -127,6 +128,10 @@ function updateCurrentUserProfile(array $input, array $files = []): array
 
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         return ['success' => false, 'message' => 'Debes escribir un correo válido.'];
+    }
+
+    if ($password !== '' && mb_strlen($password) < 6) {
+        return ['success' => false, 'message' => 'La nueva clave debe tener al menos 6 caracteres.'];
     }
 
     $pdo = getPdo();
@@ -148,24 +153,34 @@ function updateCurrentUserProfile(array $input, array $files = []): array
     $newProfilePhotoPath = uploadUserProfilePhoto($files['foto_perfil'] ?? null);
     $finalPhotoPath = $newProfilePhotoPath ?? (($currentUser['foto_perfil_url'] ?? null) !== null ? (string) $currentUser['foto_perfil_url'] : null);
 
-    $updateStmt = $pdo->prepare("UPDATE usuarios SET nombre = :nombre, apellido = :apellido, username = :username, email = :email, telefono = :telefono, nombre_tienda = :nombre_tienda, facebook = :facebook, instagram = :instagram, tiktok = :tiktok, whatsapp = :whatsapp, telegram = :telegram, foto_perfil_url = :foto_perfil_url WHERE id = :id AND role = 'usuario'");
+    if ($password !== '') {
+        $updateStmt = $pdo->prepare("UPDATE usuarios SET nombre = :nombre, apellido = :apellido, username = :username, email = :email, telefono = :telefono, nombre_tienda = :nombre_tienda, facebook = :facebook, instagram = :instagram, tiktok = :tiktok, whatsapp = :whatsapp, telegram = :telegram, foto_perfil_url = :foto_perfil_url, password_hash = :password_hash WHERE id = :id AND role = 'usuario'");
+    } else {
+        $updateStmt = $pdo->prepare("UPDATE usuarios SET nombre = :nombre, apellido = :apellido, username = :username, email = :email, telefono = :telefono, nombre_tienda = :nombre_tienda, facebook = :facebook, instagram = :instagram, tiktok = :tiktok, whatsapp = :whatsapp, telegram = :telegram, foto_perfil_url = :foto_perfil_url WHERE id = :id AND role = 'usuario'");
+    }
+
+    $updateParams = [
+        'nombre' => $name,
+        'apellido' => $lastName,
+        'username' => $username,
+        'email' => $email,
+        'telefono' => $phone,
+        'nombre_tienda' => $extraProfileData['nombre_tienda'],
+        'facebook' => $extraProfileData['facebook'],
+        'instagram' => $extraProfileData['instagram'],
+        'tiktok' => $extraProfileData['tiktok'],
+        'whatsapp' => $extraProfileData['whatsapp'],
+        'telegram' => $extraProfileData['telegram'],
+        'foto_perfil_url' => $finalPhotoPath,
+        'id' => $authenticatedUser['id'],
+    ];
+
+    if ($password !== '') {
+        $updateParams['password_hash'] = password_hash($password, PASSWORD_DEFAULT);
+    }
 
     try {
-        $updateStmt->execute([
-            'nombre' => $name,
-            'apellido' => $lastName,
-            'username' => $username,
-            'email' => $email,
-            'telefono' => $phone,
-            'nombre_tienda' => $extraProfileData['nombre_tienda'],
-            'facebook' => $extraProfileData['facebook'],
-            'instagram' => $extraProfileData['instagram'],
-            'tiktok' => $extraProfileData['tiktok'],
-            'whatsapp' => $extraProfileData['whatsapp'],
-            'telegram' => $extraProfileData['telegram'],
-            'foto_perfil_url' => $finalPhotoPath,
-            'id' => $authenticatedUser['id'],
-        ]);
+        $updateStmt->execute($updateParams);
     } catch (Throwable $exception) {
         deleteLocalUserProfileAsset($newProfilePhotoPath);
         throw $exception;
