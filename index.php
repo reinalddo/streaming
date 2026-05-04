@@ -1509,30 +1509,73 @@ header('Expires: 0');
 
                     <div id="userStatusMessage" class="small text-secondary mb-4"></div>
 
-                    <div class="user-search-hero">
-                        <div class="dashboard-block">
-                            <form id="userSearchForm" class="row g-3 align-items-end" novalidate>
-                                <div class="col-12 col-lg-9">
-                                    <label class="form-label" for="userSearchEmail">Correo a consultar</label>
-                                    <div class="user-search-select">
-                                        <input class="form-control" type="text" id="userSearchEmail" name="email" placeholder="Correo a Consultar" autocomplete="off" required>
-                                        <div id="userSearchOptions" class="user-search-options d-none"></div>
-                                    </div>
-                                    <div id="userSearchHelp" class="form-text">Solo puedes buscar correos de cuentas que ya estén asignadas a tu usuario.</div>
+                    <div id="userTabsWrapper" class="d-none mb-4">
+                        <ul class="nav nav-pills flex-wrap gap-2 admin-tabs" id="userTabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="user-mailbox-tab" data-bs-toggle="pill" data-bs-target="#user-mailbox-pane" type="button" role="tab" aria-controls="user-mailbox-pane" aria-selected="true">Consultar Correo</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="user-reseller-assignments-tab" data-bs-toggle="pill" data-bs-target="#user-reseller-assignments-pane" type="button" role="tab" aria-controls="user-reseller-assignments-pane" aria-selected="false">Asignar Cuentas</button>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <div class="tab-content">
+                        <div class="tab-pane fade show active" id="user-mailbox-pane" role="tabpanel" aria-labelledby="user-mailbox-tab" tabindex="0">
+                            <div class="user-search-hero">
+                                <div class="dashboard-block">
+                                    <form id="userSearchForm" class="row g-3 align-items-end" novalidate>
+                                        <div class="col-12 col-lg-9">
+                                            <label class="form-label" for="userSearchEmail">Correo a consultar</label>
+                                            <div class="user-search-select">
+                                                <input class="form-control" type="text" id="userSearchEmail" name="email" placeholder="Correo a Consultar" autocomplete="off" required>
+                                                <div id="userSearchOptions" class="user-search-options d-none"></div>
+                                            </div>
+                                            <div id="userSearchHelp" class="form-text">Solo puedes buscar correos de cuentas que ya estén asignadas a tu usuario.</div>
+                                        </div>
+                                        <div class="col-12 col-lg-3 d-grid d-lg-flex justify-content-lg-end">
+                                            <button id="userSearchButton" class="btn btn-primary btn-user-search px-4" type="submit">
+                                                <span class="d-inline-flex align-items-center justify-content-center gap-2">
+                                                    <i class="bi bi-search"></i>
+                                                    Consultar
+                                                </span>
+                                            </button>
+                                        </div>
+                                    </form>
                                 </div>
-                                <div class="col-12 col-lg-3 d-grid d-lg-flex justify-content-lg-end">
-                                    <button id="userSearchButton" class="btn btn-primary btn-user-search px-4" type="submit">
-                                        <span class="d-inline-flex align-items-center justify-content-center gap-2">
-                                            <i class="bi bi-search"></i>
-                                            Consultar
-                                        </span>
-                                    </button>
+
+                                <div id="userSearchResults" class="dashboard-block">
+                                    <div class="empty-state">Ingresa un correo y presiona Consultar para ver los resultados.</div>
                                 </div>
-                            </form>
+                            </div>
                         </div>
 
-                        <div id="userSearchResults" class="dashboard-block">
-                            <div class="empty-state">Ingresa un correo y presiona Consultar para ver los resultados.</div>
+                        <div class="tab-pane fade" id="user-reseller-assignments-pane" role="tabpanel" aria-labelledby="user-reseller-assignments-tab" tabindex="0">
+                            <div class="dashboard-block">
+                                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+                                    <div>
+                                        <h2 class="section-title mb-0">Asignar cuentas por servicio</h2>
+                                        <p class="section-subtitle mb-0">Revisa tus cuentas asignadas y distribúyelas solo entre los usuarios que tienes marcados como vendedores.</p>
+                                    </div>
+                                    <span id="userResellerAssignmentServiceCountBadge" class="badge text-bg-secondary rounded-pill"></span>
+                                </div>
+
+                                <div class="data-table-wrapper">
+                                    <div class="table-responsive">
+                                        <table class="table table-hover align-middle mb-0">
+                                            <thead>
+                                                <tr>
+                                                    <th>Servicio</th>
+                                                    <th>Cuentas</th>
+                                                    <th>Usuarios Asignados</th>
+                                                    <th>Ver/Asignar</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="userResellerServiceAssignmentsTableBody"></tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -2830,11 +2873,13 @@ header('Expires: 0');
 
     serviceAssignUsersModalElement.addEventListener('hidden.bs.modal', () => {
         if (appState.pendingUserAssignmentsUserId === null) {
+            appState.selectedAssignScope = 'admin';
             return;
         }
 
         const pendingUserId = appState.pendingUserAssignmentsUserId;
         appState.pendingUserAssignmentsUserId = null;
+        appState.selectedAssignScope = 'admin';
         openUserAssignmentsModal(pendingUserId);
     });
 
@@ -2843,9 +2888,9 @@ header('Expires: 0');
             return;
         }
 
-        const { serviceId, selectedAccountId } = appState.resumeServiceAssignContext;
+        const { serviceId, selectedAccountId, scope } = appState.resumeServiceAssignContext;
         appState.resumeServiceAssignContext = null;
-        openServiceAssignUsersModal(serviceId, selectedAccountId);
+        openServiceAssignUsersModal(serviceId, selectedAccountId, scope || 'admin');
     });
 
     const confirmActionModalElement = document.getElementById('confirmActionModal');
@@ -2906,6 +2951,10 @@ header('Expires: 0');
     const passwordResetRequestModal = new bootstrap.Modal(passwordResetRequestModalElement);
 
     const userProfileModalElement = document.getElementById('userProfileModal');
+    const userTabsWrapper = document.getElementById('userTabsWrapper');
+    const userMailboxTabButton = document.getElementById('user-mailbox-tab');
+    const userResellerAssignmentServiceCountBadge = document.getElementById('userResellerAssignmentServiceCountBadge');
+    const userResellerServiceAssignmentsTableBody = document.getElementById('userResellerServiceAssignmentsTableBody');
     const userProfileForm = document.getElementById('userProfileForm');
     const userProfileNombre = document.getElementById('userProfileNombre');
     const userProfileApellido = document.getElementById('userProfileApellido');
@@ -2937,6 +2986,11 @@ header('Expires: 0');
         userModule: {
             profile: null,
             assignments: [],
+            reseller: {
+                enabled: false,
+                services: [],
+                users: [],
+            },
         },
         userMailbox: {
             selectedEmail: '',
@@ -2948,6 +3002,7 @@ header('Expires: 0');
         },
         selectedServiceId: null,
         selectedAssignServiceId: null,
+        selectedAssignScope: 'admin',
         selectedAssignedUsersAccountId: null,
         expandedAssignmentServiceId: null,
         assignmentTableState: {},
@@ -3029,6 +3084,14 @@ header('Expires: 0');
 
     function getUserModuleAssignments() {
         return normalizeArray(appState.userModule.assignments);
+    }
+
+    function getUserModuleResellerServices() {
+        return normalizeArray(appState.userModule.reseller?.services);
+    }
+
+    function getUserModuleResellerUsers() {
+        return normalizeArray(appState.userModule.reseller?.users);
     }
 
     function getUserModuleProfile() {
@@ -3205,6 +3268,27 @@ header('Expires: 0');
 
     function getUsers() {
         return normalizeArray(appState.overview.users);
+    }
+
+    function getServicesForScope(scope = 'admin') {
+        return scope === 'reseller' ? getUserModuleResellerServices() : getServices();
+    }
+
+    function getUsersForScope(scope = 'admin') {
+        return scope === 'reseller' ? getUserModuleResellerUsers() : getUsers();
+    }
+
+    function getAssignmentEndpointByScope(scope = 'admin') {
+        return scope === 'reseller' ? './api/user/assignments.php' : './api/admin/assignments.php';
+    }
+
+    function showScopeStatus(scope, message, tone = 'secondary') {
+        if (scope === 'reseller') {
+            showUserStatus(message, tone);
+            return;
+        }
+
+        showAdminStatus(message, tone);
     }
 
     function getGallerySlides() {
@@ -3426,6 +3510,10 @@ header('Expires: 0');
         return getServices().find((service) => Number(service.id) === Number(serviceId)) || null;
     }
 
+    function getServiceByIdForScope(serviceId, scope = 'admin') {
+        return getServicesForScope(scope).find((service) => Number(service.id) === Number(serviceId)) || null;
+    }
+
     function getUserById(userId) {
         return getUsers().find((user) => Number(user.id) === Number(userId)) || null;
     }
@@ -3458,8 +3546,8 @@ header('Expires: 0');
         return rows;
     }
 
-    function getAssignmentTableState(serviceId) {
-        const normalizedServiceId = String(serviceId);
+    function getAssignmentTableState(serviceId, scope = 'admin') {
+        const normalizedServiceId = `${scope}:${String(serviceId)}`;
 
         if (!appState.assignmentTableState[normalizedServiceId]) {
             appState.assignmentTableState[normalizedServiceId] = {
@@ -3470,6 +3558,10 @@ header('Expires: 0');
         }
 
         return appState.assignmentTableState[normalizedServiceId];
+    }
+
+    function getScopedServiceAssignUsersState(scope = 'admin') {
+        return getListTableState(`serviceAssignUsers:${scope}`);
     }
 
     function getListTableState(key) {
@@ -4062,6 +4154,11 @@ header('Expires: 0');
         const result = await requestJson('./api/user/overview.php');
         appState.userModule.profile = result.user || null;
         appState.userModule.assignments = normalizeArray(result.assignments);
+        appState.userModule.reseller = {
+            enabled: Boolean(result.is_reseller),
+            services: normalizeArray(result.reseller_services),
+            users: normalizeArray(result.reseller_users),
+        };
         appState.user = {
             ...(appState.user || {}),
             ...(result.user || {}),
@@ -4079,6 +4176,17 @@ header('Expires: 0');
         hideUserSearchOptions();
         populateUserProfileForm();
         renderTopbarActions();
+
+        if (appState.userModule.reseller.enabled) {
+            userTabsWrapper.classList.remove('d-none');
+            renderServiceAssignmentTable('reseller');
+        } else {
+            userTabsWrapper.classList.add('d-none');
+
+            if (userMailboxTabButton) {
+                bootstrap.Tab.getOrCreateInstance(userMailboxTabButton).show();
+            }
+        }
 
         if (result.assignments.length === 0) {
             renderUserModuleEmptyState('Todavía no tienes cuentas asignadas para consultar.');
@@ -4278,11 +4386,18 @@ header('Expires: 0');
         appState.userModule = {
             profile: null,
             assignments: [],
+            reseller: {
+                enabled: false,
+                services: [],
+                users: [],
+            },
         };
+        appState.selectedAssignScope = 'admin';
         userSearchForm.reset();
         hideUserSearchOptions();
         renderUserModuleEmptyState('Escribe o selecciona una cuenta asignada y presiona Consultar para ver los correos recientes.');
         showUserStatus('', 'secondary');
+        userTabsWrapper.classList.add('d-none');
         userView.classList.add('d-none');
         authView.classList.remove('d-none');
         applyPublicAppBranding('Acceso');
@@ -5166,8 +5281,8 @@ header('Expires: 0');
         }).join('');
     }
 
-    function renderServiceAssignmentsAccordion(service) {
-        const state = getAssignmentTableState(service.id);
+    function renderServiceAssignmentsAccordion(service, scope = 'admin') {
+        const state = getAssignmentTableState(service.id, scope);
         const allRows = getServiceAssignmentRows(service);
         const normalizedQuery = state.query.trim().toLowerCase();
         const filteredRows = allRows.filter((row) => {
@@ -5224,7 +5339,7 @@ header('Expires: 0');
                                         </td>
                                         <td>${escapeHtml(row.description || 'Sin descripción')}</td>
                                         <td>
-                                            <button class="btn btn-sm btn-outline-danger" type="button" data-unassign-id="${row.assignment_id}">Desasignar</button>
+                                            <button class="btn btn-sm btn-outline-danger" type="button" data-unassign-id="${row.assignment_id}" data-assignment-scope="${scope}">Desasignar</button>
                                         </td>
                                     </tr>
                                 `).join('')}
@@ -5237,11 +5352,11 @@ header('Expires: 0');
         return `
             <div class="table-toolbar">
                 <div class="d-flex gap-2 flex-wrap align-items-center">
-                    <input class="form-control" type="search" value="${escapeHtml(state.query)}" placeholder="Filtrar por usuario, correo o cuenta" data-service-filter="${service.id}">
+                    <input class="form-control" type="search" value="${escapeHtml(state.query)}" placeholder="Filtrar por usuario, correo o cuenta" data-service-filter="${service.id}" data-assignment-scope="${scope}">
                 </div>
                 <div class="d-flex gap-2 align-items-center flex-wrap">
                     <label class="small text-secondary" for="servicePageSize${service.id}">Filas por página</label>
-                    <select class="form-select" id="servicePageSize${service.id}" data-service-page-size="${service.id}">
+                    <select class="form-select" id="servicePageSize${service.id}" data-service-page-size="${service.id}" data-assignment-scope="${scope}">
                         <option value="5" ${state.pageSize === 5 ? 'selected' : ''}>5</option>
                         <option value="10" ${state.pageSize === 10 ? 'selected' : ''}>10</option>
                         <option value="20" ${state.pageSize === 20 ? 'selected' : ''}>20</option>
@@ -5252,28 +5367,38 @@ header('Expires: 0');
             <div class="pagination-strip">
                 <div class="small text-secondary">${summary}</div>
                 <div class="table-action-group">
-                    <button class="btn btn-sm btn-outline-secondary" type="button" data-service-page-nav="${service.id}" data-direction="prev" ${state.page <= 1 ? 'disabled' : ''}>Anterior</button>
+                    <button class="btn btn-sm btn-outline-secondary" type="button" data-service-page-nav="${service.id}" data-direction="prev" data-assignment-scope="${scope}" ${state.page <= 1 ? 'disabled' : ''}>Anterior</button>
                     <span class="metric-pill">Página ${state.page} de ${totalPages}</span>
-                    <button class="btn btn-sm btn-outline-secondary" type="button" data-service-page-nav="${service.id}" data-direction="next" ${state.page >= totalPages ? 'disabled' : ''}>Siguiente</button>
+                    <button class="btn btn-sm btn-outline-secondary" type="button" data-service-page-nav="${service.id}" data-direction="next" data-assignment-scope="${scope}" ${state.page >= totalPages ? 'disabled' : ''}>Siguiente</button>
                 </div>
             </div>
         `;
     }
 
-    function renderServiceAssignmentTable() {
-        const services = getServices();
-        assignmentServiceCountBadge.textContent = `${services.length} servicio(s)`;
+    function renderServiceAssignmentTable(scope = 'admin') {
+        const services = getServicesForScope(scope);
+        const targetTableBody = scope === 'reseller' ? userResellerServiceAssignmentsTableBody : serviceAssignmentsTableBody;
+        const targetBadge = scope === 'reseller' ? userResellerAssignmentServiceCountBadge : assignmentServiceCountBadge;
 
-        if (services.length === 0) {
-            serviceAssignmentsTableBody.innerHTML = '<tr><td colspan="4"><div class="empty-state">Aún no hay servicios creados.</div></td></tr>';
+        if (!targetTableBody || !targetBadge) {
             return;
         }
 
-        serviceAssignmentsTableBody.innerHTML = services.map((service) => {
+        targetBadge.textContent = `${services.length} servicio(s)`;
+
+        if (services.length === 0) {
+            targetTableBody.innerHTML = scope === 'reseller'
+                ? '<tr><td colspan="4"><div class="empty-state">Todavía no tienes cuentas asignadas para repartir a tus vendedores.</div></td></tr>'
+                : '<tr><td colspan="4"><div class="empty-state">Aún no hay servicios creados.</div></td></tr>';
+            return;
+        }
+
+        targetTableBody.innerHTML = services.map((service) => {
             const accounts = normalizeArray(service.accounts);
             const assignmentRows = getServiceAssignmentRows(service);
             const uniqueUsers = new Set(assignmentRows.map((row) => row.user_id));
-            const isExpanded = appState.expandedAssignmentServiceId === Number(service.id);
+            const expandedKey = `${scope}:${service.id}`;
+            const isExpanded = appState.expandedAssignmentServiceId === expandedKey;
 
             return `
                 <tr>
@@ -5290,15 +5415,15 @@ header('Expires: 0');
                     <td><span class="metric-pill">${uniqueUsers.size} usuario(s)</span></td>
                     <td>
                         <div class="table-action-group">
-                            <button class="btn btn-sm btn-outline-primary" type="button" data-toggle-service-users="${service.id}">${isExpanded ? 'Ocultar Usuarios' : 'Ver Usuarios'}</button>
-                            <button class="btn btn-sm btn-primary" type="button" data-open-service-assign="${service.id}" ${accounts.length === 0 ? 'disabled' : ''}>Asignar Usuarios</button>
+                            <button class="btn btn-sm btn-outline-primary" type="button" data-toggle-service-users="${service.id}" data-assignment-scope="${scope}">${isExpanded ? 'Ocultar Usuarios' : 'Ver Usuarios'}</button>
+                            <button class="btn btn-sm btn-primary" type="button" data-open-service-assign="${service.id}" data-assignment-scope="${scope}" ${accounts.length === 0 ? 'disabled' : ''}>Asignar Usuarios</button>
                         </div>
                     </td>
                 </tr>
                 <tr class="service-accordion-row ${isExpanded ? '' : 'd-none'}">
                     <td colspan="4">
                         <div class="service-accordion-panel">
-                            ${renderServiceAssignmentsAccordion(service)}
+                            ${renderServiceAssignmentsAccordion(service, scope)}
                         </div>
                     </td>
                 </tr>
@@ -5306,15 +5431,17 @@ header('Expires: 0');
         }).join('');
     }
 
-    function rerenderServiceAssignmentsAndRestoreFilterFocus(serviceId, selectionStart = null, selectionEnd = null) {
-        renderServiceAssignmentTable();
+    function rerenderServiceAssignmentsAndRestoreFilterFocus(serviceId, selectionStart = null, selectionEnd = null, scope = 'admin') {
+        renderServiceAssignmentTable(scope);
+
+        const targetTableBody = scope === 'reseller' ? userResellerServiceAssignmentsTableBody : serviceAssignmentsTableBody;
 
         const normalizedServiceId = String(serviceId || '');
         if (normalizedServiceId === '') {
             return;
         }
 
-        const nextFilterInput = serviceAssignmentsTableBody.querySelector(`[data-service-filter="${CSS.escape(normalizedServiceId)}"]`);
+        const nextFilterInput = targetTableBody.querySelector(`[data-service-filter="${CSS.escape(normalizedServiceId)}"][data-assignment-scope="${CSS.escape(scope)}"]`);
 
         if (!nextFilterInput) {
             return;
@@ -5332,7 +5459,8 @@ header('Expires: 0');
     }
 
     function renderServiceAssignUsersTable() {
-        const service = getServiceById(appState.selectedAssignServiceId);
+        const scope = appState.selectedAssignScope || 'admin';
+        const service = getServiceByIdForScope(appState.selectedAssignServiceId, scope);
 
         if (!service) {
             serviceAssignUsersTableBody.innerHTML = '<tr><td colspan="5"><div class="empty-state">Servicio no disponible.</div></td></tr>';
@@ -5340,7 +5468,7 @@ header('Expires: 0');
         }
 
         const serviceAccounts = normalizeArray(service.accounts);
-        const state = getListTableState('serviceAssignUsers');
+        const state = getScopedServiceAssignUsersState(scope);
         const searchQuery = state.query.trim().toLowerCase();
         const accountQuery = serviceAssignAccountSearchInput.value.trim().toLowerCase();
         const filteredServiceAccounts = serviceAccounts.filter((account) => {
@@ -5385,7 +5513,7 @@ header('Expires: 0');
             return;
         }
 
-        const users = getUsers().filter((user) => {
+        const users = getUsersForScope(scope).filter((user) => {
             const serviceAssignments = normalizeArray(user.assignments).filter((assignment) => serviceAccountIds.has(Number(assignment.account_id)));
             const allAssignments = normalizeArray(user.assignments);
             const haystack = [
@@ -5430,9 +5558,9 @@ header('Expires: 0');
                                 </div>
                             `).join('')}
                     </div>
-                    <div>
-                        <button class="btn btn-sm btn-outline-primary" type="button" data-view-user-assignments-inline="${user.id}" ${allAssignments.length === 0 ? 'disabled' : ''}>Ver todas las cuentas de este usuario (${totalAssignmentsLabel})</button>
-                    </div>
+                    ${scope === 'admin'
+                        ? `<div><button class="btn btn-sm btn-outline-primary" type="button" data-view-user-assignments-inline="${user.id}" ${allAssignments.length === 0 ? 'disabled' : ''}>Ver todas las cuentas de este usuario (${totalAssignmentsLabel})</button></div>`
+                        : `<div class="small text-secondary">${totalAssignmentsLabel} visibles dentro de tu alcance como revendedor.</div>`}
                 </div>
             `;
 
@@ -5452,15 +5580,16 @@ header('Expires: 0');
         }).join('');
     }
 
-    function openServiceAssignUsersModal(serviceId, preferredAccountId = '') {
-        const service = getServiceById(serviceId);
+    function openServiceAssignUsersModal(serviceId, preferredAccountId = '', scope = 'admin') {
+        const service = getServiceByIdForScope(serviceId, scope);
 
         if (!service) {
             return;
         }
 
         appState.selectedAssignServiceId = Number(serviceId);
-        const state = getListTableState('serviceAssignUsers');
+        appState.selectedAssignScope = scope;
+        const state = getScopedServiceAssignUsersState(scope);
         state.query = '';
         state.page = 1;
         const serviceAccounts = normalizeArray(service.accounts);
@@ -5486,7 +5615,7 @@ header('Expires: 0');
         renderGlobalGallery();
         renderServices();
         renderRegisteredUsersTable();
-        renderServiceAssignmentTable();
+        renderServiceAssignmentTable('admin');
         renderGalleryAdminTable();
         renderMailConfiguration();
         renderAdminDataConfiguration();
@@ -6716,7 +6845,7 @@ header('Expires: 0');
         }
     });
 
-    serviceAssignmentsTableBody.addEventListener('click', async (event) => {
+    async function handleServiceAssignmentsTableClick(event, scope = 'admin') {
         const toggleButton = event.target.closest('[data-toggle-service-users]');
         const openAssignButton = event.target.closest('[data-open-service-assign]');
         const pageNavButton = event.target.closest('[data-service-page-nav]');
@@ -6724,23 +6853,24 @@ header('Expires: 0');
 
         if (toggleButton) {
             const serviceId = Number(toggleButton.dataset.toggleServiceUsers);
-            appState.expandedAssignmentServiceId = appState.expandedAssignmentServiceId === serviceId ? null : serviceId;
-            renderServiceAssignmentTable();
+            const expandedKey = `${scope}:${serviceId}`;
+            appState.expandedAssignmentServiceId = appState.expandedAssignmentServiceId === expandedKey ? null : expandedKey;
+            renderServiceAssignmentTable(scope);
             return;
         }
 
         if (openAssignButton) {
-            openServiceAssignUsersModal(openAssignButton.dataset.openServiceAssign);
+            openServiceAssignUsersModal(openAssignButton.dataset.openServiceAssign, '', scope);
             return;
         }
 
         if (pageNavButton) {
-            const state = getAssignmentTableState(pageNavButton.dataset.servicePageNav);
+            const state = getAssignmentTableState(pageNavButton.dataset.servicePageNav, scope);
             state.page += pageNavButton.dataset.direction === 'next' ? 1 : -1;
             if (state.page < 1) {
                 state.page = 1;
             }
-            renderServiceAssignmentTable();
+            renderServiceAssignmentTable(scope);
             return;
         }
 
@@ -6762,72 +6892,102 @@ header('Expires: 0');
         const formData = new FormData();
         formData.append('action', 'unassign');
         formData.append('assignment_id', unassignButton.dataset.unassignId);
-        showAdminStatus('Desasignando cuenta...', 'secondary');
+        showScopeStatus(scope, 'Desasignando cuenta...', 'secondary');
 
         try {
-            const result = await requestJson('./api/admin/assignments.php', {
+            const result = await requestJson(getAssignmentEndpointByScope(scope), {
                 method: 'POST',
                 body: formData,
             });
 
-            showAdminStatus(result.message, 'success');
-            await loadAdminOverview();
+            showScopeStatus(scope, result.message, 'success');
+
+            if (scope === 'reseller') {
+                await loadUserModuleOverview();
+            } else {
+                await loadAdminOverview();
+            }
         } catch (error) {
-            showAdminStatus(error.message, 'danger');
+            showScopeStatus(scope, error.message, 'danger');
         }
+    }
+
+    serviceAssignmentsTableBody.addEventListener('click', (event) => {
+        handleServiceAssignmentsTableClick(event, 'admin');
     });
 
-    serviceAssignmentsTableBody.addEventListener('input', (event) => {
+    userResellerServiceAssignmentsTableBody.addEventListener('click', (event) => {
+        handleServiceAssignmentsTableClick(event, 'reseller');
+    });
+
+    function handleServiceAssignmentsTableInput(event, scope = 'admin') {
         const filterInput = event.target.closest('[data-service-filter]');
 
         if (!filterInput) {
             return;
         }
 
-        const state = getAssignmentTableState(filterInput.dataset.serviceFilter);
+        const state = getAssignmentTableState(filterInput.dataset.serviceFilter, scope);
         state.query = filterInput.value;
         state.page = 1;
         rerenderServiceAssignmentsAndRestoreFilterFocus(
             filterInput.dataset.serviceFilter,
             filterInput.selectionStart,
-            filterInput.selectionEnd
+            filterInput.selectionEnd,
+            scope
         );
+    }
+
+    serviceAssignmentsTableBody.addEventListener('input', (event) => {
+        handleServiceAssignmentsTableInput(event, 'admin');
     });
 
-    serviceAssignmentsTableBody.addEventListener('change', (event) => {
+    userResellerServiceAssignmentsTableBody.addEventListener('input', (event) => {
+        handleServiceAssignmentsTableInput(event, 'reseller');
+    });
+
+    function handleServiceAssignmentsTableChange(event, scope = 'admin') {
         const pageSizeSelect = event.target.closest('[data-service-page-size]');
 
         if (!pageSizeSelect) {
             return;
         }
 
-        const state = getAssignmentTableState(pageSizeSelect.dataset.servicePageSize);
+        const state = getAssignmentTableState(pageSizeSelect.dataset.servicePageSize, scope);
         state.pageSize = Number(pageSizeSelect.value) || 5;
         state.page = 1;
-        renderServiceAssignmentTable();
+        renderServiceAssignmentTable(scope);
+    }
+
+    serviceAssignmentsTableBody.addEventListener('change', (event) => {
+        handleServiceAssignmentsTableChange(event, 'admin');
+    });
+
+    userResellerServiceAssignmentsTableBody.addEventListener('change', (event) => {
+        handleServiceAssignmentsTableChange(event, 'reseller');
     });
 
     serviceAssignAccountSelect.addEventListener('change', () => {
-        const state = getListTableState('serviceAssignUsers');
+        const state = getScopedServiceAssignUsersState(appState.selectedAssignScope || 'admin');
         state.page = 1;
         renderServiceAssignUsersTable();
     });
 
     serviceAssignAccountSearchInput.addEventListener('input', () => {
-        const state = getListTableState('serviceAssignUsers');
+        const state = getScopedServiceAssignUsersState(appState.selectedAssignScope || 'admin');
         state.page = 1;
         renderServiceAssignUsersTable();
     });
 
     serviceAssignUserSearchInput.addEventListener('input', () => {
-        const state = getListTableState('serviceAssignUsers');
+        const state = getScopedServiceAssignUsersState(appState.selectedAssignScope || 'admin');
         state.query = serviceAssignUserSearchInput.value;
         state.page = 1;
         renderServiceAssignUsersTable();
     });
 
     serviceAssignUsersPageSize.addEventListener('change', () => {
-        const state = getListTableState('serviceAssignUsers');
+        const state = getScopedServiceAssignUsersState(appState.selectedAssignScope || 'admin');
         state.pageSize = Number(serviceAssignUsersPageSize.value) || 10;
         state.page = 1;
         renderServiceAssignUsersTable();
@@ -6840,7 +7000,7 @@ header('Expires: 0');
             return;
         }
 
-        const state = getListTableState('serviceAssignUsers');
+        const state = getScopedServiceAssignUsersState(appState.selectedAssignScope || 'admin');
         state.page += button.dataset.pageNav === 'next' ? 1 : -1;
         if (state.page < 1) {
             state.page = 1;
@@ -6849,11 +7009,16 @@ header('Expires: 0');
     });
 
     serviceAssignUsersTableBody.addEventListener('click', async (event) => {
+        const scope = appState.selectedAssignScope || 'admin';
         const assignButton = event.target.closest('[data-assign-user-id]');
         const unassignButton = event.target.closest('[data-unassign-service-modal]');
         const viewAssignmentsButton = event.target.closest('[data-view-user-assignments-inline]');
 
         if (viewAssignmentsButton) {
+            if (scope !== 'admin') {
+                return;
+            }
+
             const serviceId = appState.selectedAssignServiceId;
 
             appState.resumeServiceAssignContext = serviceId === null
@@ -6861,6 +7026,7 @@ header('Expires: 0');
                 : {
                     serviceId,
                     selectedAccountId: String(serviceAssignAccountSelect.value || ''),
+                    scope,
                 };
             appState.pendingUserAssignmentsUserId = Number(viewAssignmentsButton.dataset.viewUserAssignmentsInline);
             serviceAssignUsersModal.hide();
@@ -6884,22 +7050,27 @@ header('Expires: 0');
             const formData = new FormData();
             formData.append('action', 'unassign');
             formData.append('assignment_id', unassignButton.dataset.unassignServiceModal);
-            showAdminStatus('Desasignando usuario del servicio...', 'secondary');
+            showScopeStatus(scope, 'Desasignando usuario del servicio...', 'secondary');
 
             try {
-                const result = await requestJson('./api/admin/assignments.php', {
+                const result = await requestJson(getAssignmentEndpointByScope(scope), {
                     method: 'POST',
                     body: formData,
                 });
 
-                showAdminStatus(result.message, 'success');
-                await loadAdminOverview();
+                showScopeStatus(scope, result.message, 'success');
+
+                if (scope === 'reseller') {
+                    await loadUserModuleOverview();
+                } else {
+                    await loadAdminOverview();
+                }
 
                 if (serviceId !== null) {
-                    openServiceAssignUsersModal(serviceId, selectedAccountId);
+                    openServiceAssignUsersModal(serviceId, selectedAccountId, scope);
                 }
             } catch (error) {
-                showAdminStatus(error.message, 'danger');
+                showScopeStatus(scope, error.message, 'danger');
             }
 
             return;
@@ -6913,7 +7084,7 @@ header('Expires: 0');
         const selectedAccountId = serviceAssignAccountSelect.value;
 
         if (!selectedAccountId) {
-            showAdminStatus('Debes seleccionar una cuenta del servicio antes de asignar usuarios.', 'danger');
+            showScopeStatus(scope, 'Debes seleccionar una cuenta del servicio antes de asignar usuarios.', 'danger');
             return;
         }
 
@@ -6921,22 +7092,27 @@ header('Expires: 0');
         formData.append('action', 'assign');
         formData.append('usuario_id', assignButton.dataset.assignUserId);
         formData.append('cuenta_servicio_id', selectedAccountId);
-        showAdminStatus('Asignando usuario al servicio...', 'secondary');
+        showScopeStatus(scope, 'Asignando usuario al servicio...', 'secondary');
 
         try {
-            const result = await requestJson('./api/admin/assignments.php', {
+            const result = await requestJson(getAssignmentEndpointByScope(scope), {
                 method: 'POST',
                 body: formData,
             });
 
-            showAdminStatus(result.message, 'success');
-            await loadAdminOverview();
+            showScopeStatus(scope, result.message, 'success');
+
+            if (scope === 'reseller') {
+                await loadUserModuleOverview();
+            } else {
+                await loadAdminOverview();
+            }
 
             if (serviceId !== null) {
-                openServiceAssignUsersModal(serviceId, selectedAccountId);
+                openServiceAssignUsersModal(serviceId, selectedAccountId, scope);
             }
         } catch (error) {
-            showAdminStatus(error.message, 'danger');
+            showScopeStatus(scope, error.message, 'danger');
         }
     });
 

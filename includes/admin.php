@@ -6,6 +6,7 @@ require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/session.php';
 require_once __DIR__ . '/mail.php';
 require_once __DIR__ . '/user_profile.php';
+require_once __DIR__ . '/account_assignments.php';
 
 function getAdminOverview(): array
 {
@@ -719,22 +720,7 @@ function assignAccountToUser(array $input): array
         return ['success' => false, 'message' => 'La cuenta seleccionada no existe.'];
     }
 
-    $stmt = $pdo->prepare('INSERT INTO usuario_cuentas_servicio (usuario_id, cuenta_servicio_id) VALUES (:usuario_id, :cuenta_servicio_id)');
-
-    try {
-        $stmt->execute([
-            'usuario_id' => $userId,
-            'cuenta_servicio_id' => $accountId,
-        ]);
-    } catch (PDOException $exception) {
-        if ($exception->getCode() === '23000') {
-            return ['success' => false, 'message' => 'Esa cuenta ya está asignada a ese usuario.'];
-        }
-
-        throw $exception;
-    }
-
-    return ['success' => true, 'message' => 'Cuenta asignada correctamente.'];
+    return insertUserAccountAssignment($pdo, $userId, $accountId);
 }
 
 function unassignAccountFromUser(array $input): array
@@ -748,14 +734,7 @@ function unassignAccountFromUser(array $input): array
     }
 
     $pdo = getPdo();
-    $stmt = $pdo->prepare('DELETE FROM usuario_cuentas_servicio WHERE id = :id');
-    $stmt->execute(['id' => $assignmentId]);
-
-    if ($stmt->rowCount() === 0) {
-        return ['success' => false, 'message' => 'La asignación indicada no existe.'];
-    }
-
-    return ['success' => true, 'message' => 'Cuenta desasignada correctamente.'];
+    return deleteUserAccountAssignmentById($pdo, $assignmentId);
 }
 
 function updateRegisteredUser(array $input, array $files = []): array
