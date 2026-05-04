@@ -2238,40 +2238,59 @@ header('Expires: 0');
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
             </div>
             <div class="modal-body">
-                <div class="table-toolbar mb-3">
-                    <div class="d-flex gap-2 flex-wrap align-items-center">
-                        <input class="form-control" type="search" id="userAssignmentsSearchInput" placeholder="Buscar por servicio, cuenta, descripción o clave">
+                <div class="d-flex justify-content-between align-items-center gap-3 flex-wrap mb-3">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="userAssignmentsResellerCheckbox">
+                        <label class="form-check-label" for="userAssignmentsResellerCheckbox">Marcar como Revendedor</label>
                     </div>
-                    <div class="d-flex gap-2 align-items-center flex-wrap">
-                        <label class="small text-secondary" for="userAssignmentsPageSize">Filas por página</label>
-                        <select class="form-select" id="userAssignmentsPageSize">
-                            <option value="10">10</option>
-                            <option value="20">20</option>
-                            <option value="50">50</option>
-                            <option value="100">100</option>
-                            <option value="200">200</option>
-                        </select>
+                    <div id="userAssignmentsTabsWrapper" class="d-none">
+                        <div class="nav nav-tabs" role="tablist">
+                            <button id="userAssignmentsAccountsTabButton" class="nav-link active" type="button">Cuentas</button>
+                            <button id="userAssignmentsResellerTabButton" class="nav-link" type="button">Asignar Vendedores</button>
+                        </div>
                     </div>
                 </div>
-                <div class="data-table-wrapper">
-                    <div class="table-responsive service-users-table">
-                        <table class="table table-hover align-middle mb-0">
-                            <thead>
-                                <tr>
-                                    <th>Logo</th>
-                                    <th>Servicio</th>
-                                    <th>Correo</th>
-                                    <th>Clave</th>
-                                    <th>Descripción</th>
-                                </tr>
-                            </thead>
-                            <tbody id="userAssignmentsTableBody"></tbody>
-                        </table>
+                <div class="tab-content">
+                    <div id="userAssignmentsAccountsPane" class="tab-pane fade show active">
+                        <div class="table-toolbar mb-3">
+                            <div class="d-flex gap-2 flex-wrap align-items-center">
+                                <input class="form-control" type="search" id="userAssignmentsSearchInput" placeholder="Buscar por servicio, cuenta, descripción o clave">
+                            </div>
+                            <div class="d-flex gap-2 align-items-center flex-wrap">
+                                <label class="small text-secondary" for="userAssignmentsPageSize">Filas por página</label>
+                                <select class="form-select" id="userAssignmentsPageSize">
+                                    <option value="10">10</option>
+                                    <option value="20">20</option>
+                                    <option value="50">50</option>
+                                    <option value="100">100</option>
+                                    <option value="200">200</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="data-table-wrapper">
+                            <div class="table-responsive service-users-table">
+                                <table class="table table-hover align-middle mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th>Logo</th>
+                                            <th>Servicio</th>
+                                            <th>Correo</th>
+                                            <th>Clave</th>
+                                            <th>Descripción</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="userAssignmentsTableBody"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="pagination-strip mt-3">
+                            <div id="userAssignmentsSummary" class="small text-secondary">No hay resultados para los filtros actuales.</div>
+                            <div id="userAssignmentsPagination" class="table-action-group"></div>
+                        </div>
                     </div>
-                </div>
-                <div class="pagination-strip mt-3">
-                    <div id="userAssignmentsSummary" class="small text-secondary">No hay resultados para los filtros actuales.</div>
-                    <div id="userAssignmentsPagination" class="table-action-group"></div>
+                    <div id="userAssignmentsResellerPane" class="tab-pane fade">
+                        <div class="empty-state">Aquí se configurará el módulo Asignar Vendedores.</div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -2773,6 +2792,12 @@ header('Expires: 0');
     const userAssignmentsModalElement = document.getElementById('userAssignmentsModal');
     const userAssignmentsModalTitle = document.getElementById('userAssignmentsModalTitle');
     const userAssignmentsModalSubtitle = document.getElementById('userAssignmentsModalSubtitle');
+    const userAssignmentsResellerCheckbox = document.getElementById('userAssignmentsResellerCheckbox');
+    const userAssignmentsTabsWrapper = document.getElementById('userAssignmentsTabsWrapper');
+    const userAssignmentsAccountsTabButton = document.getElementById('userAssignmentsAccountsTabButton');
+    const userAssignmentsResellerTabButton = document.getElementById('userAssignmentsResellerTabButton');
+    const userAssignmentsAccountsPane = document.getElementById('userAssignmentsAccountsPane');
+    const userAssignmentsResellerPane = document.getElementById('userAssignmentsResellerPane');
     const userAssignmentsTableBody = document.getElementById('userAssignmentsTableBody');
     const userAssignmentsSearchInput = document.getElementById('userAssignmentsSearchInput');
     const userAssignmentsPageSize = document.getElementById('userAssignmentsPageSize');
@@ -4352,6 +4377,49 @@ header('Expires: 0');
         `).join('');
     }
 
+    function activateUserAssignmentsTab(tabName = 'accounts') {
+        const showAccounts = tabName !== 'resellers';
+        appState.userAssignmentsActiveTab = showAccounts ? 'accounts' : 'resellers';
+        userAssignmentsAccountsTabButton.classList.toggle('active', showAccounts);
+        userAssignmentsResellerTabButton.classList.toggle('active', !showAccounts);
+        userAssignmentsAccountsPane.classList.toggle('show', showAccounts);
+        userAssignmentsAccountsPane.classList.toggle('active', showAccounts);
+        userAssignmentsResellerPane.classList.toggle('show', !showAccounts);
+        userAssignmentsResellerPane.classList.toggle('active', !showAccounts);
+    }
+
+    function renderUserAssignmentsModal(user, { resetSearch = false } = {}) {
+        const assignments = normalizeArray(user?.assignments);
+        const isReseller = Number(user?.revendedor) === 1;
+
+        userAssignmentsModalTitle.textContent = `Cuentas Asignadas a ${getUserDisplayName(user)}`;
+        userAssignmentsModalSubtitle.textContent = `${assignments.length} cuenta(s) asignada(s) en total`;
+        userAssignmentsResellerCheckbox.checked = isReseller;
+        userAssignmentsTabsWrapper.classList.toggle('d-none', !isReseller);
+        userAssignmentsResellerPane.innerHTML = isReseller
+            ? `<div class="empty-state">El módulo Asignar Vendedores se configurará para ${escapeHtml(getUserDisplayName(user))} en el siguiente paso.</div>`
+            : '<div class="empty-state">Aquí se configurará el módulo Asignar Vendedores.</div>';
+
+        if (!isReseller) {
+            activateUserAssignmentsTab('accounts');
+        } else {
+            activateUserAssignmentsTab(appState.userAssignmentsActiveTab || 'accounts');
+        }
+
+        renderUserAssignmentsTable(user, { resetSearch });
+    }
+
+    function updateLocalUserResellerStatus(userId, isReseller) {
+        const user = getUserById(userId);
+
+        if (!user) {
+            return null;
+        }
+
+        user.revendedor = isReseller ? 1 : 0;
+        return user;
+    }
+
     function openConfirmModal({ title, message, confirmText = 'Aceptar', confirmClass = 'btn-danger' }) {
         return new Promise((resolve) => {
             appState.confirmResolver = resolve;
@@ -4788,10 +4856,8 @@ header('Expires: 0');
         }
 
         appState.selectedUserAssignmentsUserId = Number(userId);
-        const assignments = normalizeArray(user.assignments);
-        userAssignmentsModalTitle.textContent = `Cuentas Asignadas a ${getUserDisplayName(user)}`;
-        userAssignmentsModalSubtitle.textContent = `${assignments.length} cuenta(s) asignada(s) en total`;
-        renderUserAssignmentsTable(user, { resetSearch: true });
+        appState.userAssignmentsActiveTab = 'accounts';
+        renderUserAssignmentsModal(user, { resetSearch: true });
 
         userAssignmentsModal.show();
     }
@@ -5905,6 +5971,51 @@ header('Expires: 0');
             }
 
             renderUserAssignmentsTable(user);
+        }
+    });
+
+    userAssignmentsAccountsTabButton.addEventListener('click', () => {
+        activateUserAssignmentsTab('accounts');
+    });
+
+    userAssignmentsResellerTabButton.addEventListener('click', () => {
+        activateUserAssignmentsTab('resellers');
+    });
+
+    userAssignmentsResellerCheckbox.addEventListener('change', async () => {
+        const currentUserId = appState.selectedUserAssignmentsUserId;
+
+        if (currentUserId === null) {
+            return;
+        }
+
+        const nextValue = userAssignmentsResellerCheckbox.checked;
+        userAssignmentsResellerCheckbox.disabled = true;
+        showAdminStatus(nextValue ? 'Marcando usuario como revendedor...' : 'Quitando marca de revendedor...', 'secondary');
+
+        try {
+            const formData = new FormData();
+            formData.append('action', 'set_reseller');
+            formData.append('usuario_id', String(currentUserId));
+            formData.append('revendedor', nextValue ? '1' : '0');
+
+            const result = await requestJson('./api/admin/users.php', {
+                method: 'POST',
+                body: formData,
+            });
+
+            const user = updateLocalUserResellerStatus(currentUserId, Number(result.revendedor) === 1);
+
+            if (user) {
+                renderUserAssignmentsModal(user);
+            }
+
+            showAdminStatus(result.message, 'success');
+        } catch (error) {
+            userAssignmentsResellerCheckbox.checked = !nextValue;
+            showAdminStatus(error.message, 'danger');
+        } finally {
+            userAssignmentsResellerCheckbox.disabled = false;
         }
     });
 
