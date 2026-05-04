@@ -2293,7 +2293,10 @@ header('Expires: 0');
                     <div class="row g-3 align-items-end">
                         <div class="col-12 col-lg-6">
                             <label class="form-label" for="serviceAssignAccountSelect">Cuenta del servicio</label>
-                            <select class="form-select" id="serviceAssignAccountSelect"></select>
+                            <div class="d-grid gap-2">
+                                <input class="form-control" type="search" id="serviceAssignAccountSearchInput" placeholder="Buscar cuenta o perfil">
+                                <select class="form-select" id="serviceAssignAccountSelect"></select>
+                            </div>
                         </div>
                         <div class="col-12 col-lg-4">
                             <label class="form-label" for="serviceAssignUserSearchInput">Buscar usuario</label>
@@ -2780,6 +2783,7 @@ header('Expires: 0');
     const serviceAssignUsersModalElement = document.getElementById('serviceAssignUsersModal');
     const serviceAssignUsersModalTitle = document.getElementById('serviceAssignUsersModalTitle');
     const serviceAssignUsersModalSubtitle = document.getElementById('serviceAssignUsersModalSubtitle');
+    const serviceAssignAccountSearchInput = document.getElementById('serviceAssignAccountSearchInput');
     const serviceAssignAccountSelect = document.getElementById('serviceAssignAccountSelect');
     const serviceAssignUserSearchInput = document.getElementById('serviceAssignUserSearchInput');
     const serviceAssignUsersPageSize = document.getElementById('serviceAssignUsersPageSize');
@@ -5021,15 +5025,48 @@ header('Expires: 0');
         }
 
         const serviceAccounts = normalizeArray(service.accounts);
-        const serviceAccountIds = new Set(serviceAccounts.map((account) => Number(account.id)));
-        const selectedAccountId = Number(serviceAssignAccountSelect.value || 0);
         const state = getListTableState('serviceAssignUsers');
         const searchQuery = state.query.trim().toLowerCase();
+        const accountQuery = serviceAssignAccountSearchInput.value.trim().toLowerCase();
+        const filteredServiceAccounts = serviceAccounts.filter((account) => {
+            if (accountQuery === '') {
+                return true;
+            }
+
+            const haystack = [
+                account.correo_acceso || '',
+                account.descripcion || '',
+            ].join(' ').toLowerCase();
+
+            return haystack.includes(accountQuery);
+        });
+        const previousSelectedAccountId = String(serviceAssignAccountSelect.value || '');
+        const selectedAccountIdValue = filteredServiceAccounts.some((account) => String(account.id) === previousSelectedAccountId)
+            ? previousSelectedAccountId
+            : (filteredServiceAccounts[0] ? String(filteredServiceAccounts[0].id) : '');
+        const serviceAccountIds = new Set(serviceAccounts.map((account) => Number(account.id)));
+        const selectedAccountId = Number(selectedAccountIdValue || 0);
+
+        serviceAssignAccountSearchInput.value = serviceAssignAccountSearchInput.value;
+        serviceAssignAccountSelect.innerHTML = filteredServiceAccounts.length > 0
+            ? filteredServiceAccounts.map((account) => `<option value="${account.id}">${escapeHtml(account.correo_acceso)}${account.descripcion ? ` · ${escapeHtml(account.descripcion)}` : ''}</option>`).join('')
+            : '<option value="">No hay cuentas que coincidan con la búsqueda</option>';
+        serviceAssignAccountSelect.disabled = filteredServiceAccounts.length === 0;
+        serviceAssignAccountSelect.value = selectedAccountIdValue;
 
         if (serviceAccounts.length === 0) {
             serviceAssignUsersTableBody.innerHTML = '<tr><td colspan="5"><div class="empty-state">Primero crea al menos una cuenta para este servicio y luego podras asignar usuarios.</div></td></tr>';
             serviceAssignUsersSummary.textContent = 'No hay resultados para los filtros actuales.';
             renderPaginationControls(serviceAssignUsersPagination, 1, 1);
+            return;
+        }
+
+        if (filteredServiceAccounts.length === 0) {
+            serviceAssignUserSearchInput.value = state.query;
+            serviceAssignUsersPageSize.value = String(state.pageSize);
+            serviceAssignUsersSummary.textContent = 'No hay cuentas que coincidan con el filtro actual.';
+            renderPaginationControls(serviceAssignUsersPagination, 1, 1);
+            serviceAssignUsersTableBody.innerHTML = '<tr><td colspan="5"><div class="empty-state">No hay cuentas del servicio que coincidan con la búsqueda.</div></td></tr>';
             return;
         }
 
@@ -5120,6 +5157,7 @@ header('Expires: 0');
         serviceAssignUsersModalSubtitle.textContent = serviceAccounts.length > 0
             ? 'Selecciona una cuenta del servicio y luego asigna uno o varios usuarios.'
             : 'Primero crea una cuenta para este servicio y luego podras asignar usuarios.';
+        serviceAssignAccountSearchInput.value = '';
         serviceAssignAccountSelect.innerHTML = serviceAccounts.length > 0
             ? serviceAccounts.map((account) => `<option value="${account.id}">${escapeHtml(account.correo_acceso)}${account.descripcion ? ` · ${escapeHtml(account.descripcion)}` : ''}</option>`).join('')
             : '<option value="">No hay cuentas registradas</option>';
@@ -6318,6 +6356,12 @@ header('Expires: 0');
     });
 
     serviceAssignAccountSelect.addEventListener('change', () => {
+        const state = getListTableState('serviceAssignUsers');
+        state.page = 1;
+        renderServiceAssignUsersTable();
+    });
+
+    serviceAssignAccountSearchInput.addEventListener('input', () => {
         const state = getListTableState('serviceAssignUsers');
         state.page = 1;
         renderServiceAssignUsersTable();
