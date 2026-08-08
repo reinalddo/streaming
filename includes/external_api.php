@@ -78,6 +78,62 @@ function getRecentBotCodigosApiLog(PDO $pdo, int $limit = 20): array
     return $stmt !== false ? $stmt->fetchAll() : [];
 }
 
+function ensureBotCodigosProfileCountsTable(PDO $pdo): void
+{
+    $pdo->exec(
+        'CREATE TABLE IF NOT EXISTS bot_codigos_profile_counts (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            usuario_id BIGINT UNSIGNED NOT NULL,
+            cuenta_servicio_id BIGINT UNSIGNED NOT NULL,
+            cantidad INT UNSIGNED NOT NULL DEFAULT 0,
+            updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            UNIQUE KEY uq_bot_codigos_profile_counts (usuario_id, cuenta_servicio_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci'
+    );
+}
+
+function incrementBotCodigosProfileCount(PDO $pdo, int $userId, int $accountId): int
+{
+    ensureBotCodigosProfileCountsTable($pdo);
+
+    $pdo->prepare(
+        'INSERT INTO bot_codigos_profile_counts (usuario_id, cuenta_servicio_id, cantidad)
+         VALUES (:usuario_id, :cuenta_servicio_id, 1)
+         ON DUPLICATE KEY UPDATE cantidad = cantidad + 1'
+    )->execute(['usuario_id' => $userId, 'cuenta_servicio_id' => $accountId]);
+
+    $stmt = $pdo->prepare('SELECT cantidad FROM bot_codigos_profile_counts WHERE usuario_id = :usuario_id AND cuenta_servicio_id = :cuenta_servicio_id');
+    $stmt->execute(['usuario_id' => $userId, 'cuenta_servicio_id' => $accountId]);
+
+    return (int) $stmt->fetchColumn();
+}
+
+function decrementBotCodigosProfileCount(PDO $pdo, int $userId, int $accountId): ?int
+{
+    ensureBotCodigosProfileCountsTable($pdo);
+
+    $stmt = $pdo->prepare('SELECT cantidad FROM bot_codigos_profile_counts WHERE usuario_id = :usuario_id AND cuenta_servicio_id = :cuenta_servicio_id');
+    $stmt->execute(['usuario_id' => $userId, 'cuenta_servicio_id' => $accountId]);
+    $current = $stmt->fetchColumn();
+
+    if ($current === false) {
+        return null;
+    }
+
+    $remaining = max(0, (int) $current - 1);
+
+    if ($remaining > 0) {
+        $pdo->prepare('UPDATE bot_codigos_profile_counts SET cantidad = :cantidad WHERE usuario_id = :usuario_id AND cuenta_servicio_id = :cuenta_servicio_id')
+            ->execute(['cantidad' => $remaining, 'usuario_id' => $userId, 'cuenta_servicio_id' => $accountId]);
+    } else {
+        $pdo->prepare('DELETE FROM bot_codigos_profile_counts WHERE usuario_id = :usuario_id AND cuenta_servicio_id = :cuenta_servicio_id')
+            ->execute(['usuario_id' => $userId, 'cuenta_servicio_id' => $accountId]);
+    }
+
+    return $remaining;
+}
+
 function resolveSellerUserByEmail(PDO $pdo, string $email): ?array
 {
     $stmt = $pdo->prepare("SELECT id, email FROM usuarios WHERE email = :email AND role = 'usuario' LIMIT 1");
@@ -121,10 +177,16 @@ function assignAccountToSellerByEmails(PDO $pdo, string $accountEmail, string $s
         $scope = fetchResellerModuleScope($pdo, $resellerUserId);
 
         if ($scope['enabled'] && in_array((int) $account['id'], $scope['account_ids'], true)) {
-            $result = insertUserAccountAssignment($pdo, (int) $seller['id'], (int) $account['id']);
-            $result['http_status'] = $result['success'] ? 200 : 409;
+            $profileCount = incrementBotCodigosProfileCount($pdo, (int) $seller['id'], (int) $account['id']);
+            insertUserAccountAssignment($pdo, (int) $seller['id'], (int) $account['id']);
 
-            return $result;
+            return [
+                'success' => true,
+                'http_status' => 200,
+                'message' => $profileCount > 1
+                    ? "Cuenta asignada correctamente (perfil {$profileCount} de esa cuenta para este vendedor)."
+                    : 'Cuenta asignada correctamente.',
+            ];
         }
     }
 
@@ -145,6 +207,16 @@ function unassignAccountFromSellerByEmails(PDO $pdo, string $accountEmail, strin
 
     if ($account === false) {
         return ['success' => false, 'http_status' => 404, 'message' => 'El correo de la cuenta indicada no existe.'];
+    }
+
+    $remaining = decrementBotCodigosProfileCount($pdo, (int) $seller['id'], (int) $account['id']);
+
+    if ($remaining !== null && $remaining > 0) {
+        return [
+            'success' => true,
+            'http_status' => 200,
+            'message' => "Perfil desasignado, pero el vendedor aún tiene {$remaining} perfil(es) más en esa cuenta; no se le quitó el acceso.",
+        ];
     }
 
     $result = deleteUserAccountAssignmentsByAccountIdsAndUserIds($pdo, [(int) $account['id']], [(int) $seller['id']]);

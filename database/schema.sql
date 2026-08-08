@@ -132,6 +132,29 @@ CREATE TABLE IF NOT EXISTS bot_codigos_api_tokens (
     UNIQUE KEY uq_bot_codigos_api_tokens_hash (token_hash)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS bot_codigos_api_log (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    action VARCHAR(20) NOT NULL,
+    account_email VARCHAR(190) NULL,
+    reseller_email VARCHAR(190) NULL,
+    success TINYINT(1) NOT NULL,
+    http_status SMALLINT UNSIGNED NOT NULL,
+    message VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    KEY idx_bot_codigos_api_log_created (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS bot_codigos_profile_counts (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    usuario_id BIGINT UNSIGNED NOT NULL,
+    cuenta_servicio_id BIGINT UNSIGNED NOT NULL,
+    cantidad INT UNSIGNED NOT NULL DEFAULT 0,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_bot_codigos_profile_counts (usuario_id, cuenta_servicio_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS galeria_slides (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     image_url VARCHAR(255) NOT NULL,
