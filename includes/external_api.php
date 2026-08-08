@@ -220,7 +220,16 @@ function unassignAccountFromSellerByEmails(PDO $pdo, string $accountEmail, strin
     }
 
     $result = deleteUserAccountAssignmentsByAccountIdsAndUserIds($pdo, [(int) $account['id']], [(int) $seller['id']]);
-    $result['http_status'] = $result['success'] ? 200 : 404;
+
+    if (!$result['success']) {
+        return [
+            'success' => true,
+            'http_status' => 200,
+            'message' => 'La cuenta ya no estaba asignada a ese vendedor.',
+        ];
+    }
+
+    $result['http_status'] = 200;
 
     return $result;
 }
