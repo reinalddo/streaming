@@ -122,6 +122,20 @@ CREATE TABLE IF NOT EXISTS password_reset_tokens (
     CONSTRAINT fk_password_reset_user FOREIGN KEY (user_id) REFERENCES usuarios (id) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS revendedor_api_tokens (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    revendedor_usuario_id BIGINT UNSIGNED NOT NULL,
+    nombre VARCHAR(120) NULL,
+    token_hash CHAR(64) NOT NULL,
+    activo TINYINT(1) NOT NULL DEFAULT 1,
+    last_used_at DATETIME NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_revendedor_api_tokens_hash (token_hash),
+    KEY idx_revendedor_api_tokens_revendedor (revendedor_usuario_id),
+    CONSTRAINT fk_revendedor_api_tokens_revendedor FOREIGN KEY (revendedor_usuario_id) REFERENCES usuarios (id) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS galeria_slides (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     image_url VARCHAR(255) NOT NULL,

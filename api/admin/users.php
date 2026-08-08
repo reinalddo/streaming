@@ -23,6 +23,8 @@ try {
         $result = setRegisteredUserResellerStatus($_POST);
     } elseif ($action === 'set_reseller_seller') {
         $result = setResellerSellerAssignment($_POST);
+    } elseif ($action === 'generate_api_token') {
+        $result = generateRevendedorApiTokenForAdmin($_POST);
     } elseif ($action === 'reset_password') {
         $result = resetRegisteredUserPassword($_POST);
     } elseif ($action === 'delete') {

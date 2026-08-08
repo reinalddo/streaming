@@ -151,6 +151,77 @@ function ensureResellerSellerAssignmentsTable(?PDO $pdo = null): void
     );
 }
 
+function ensureRevendedorApiTokensTable(?PDO $pdo = null): void
+{
+    $pdo ??= getPdo();
+    $pdo->exec(
+        'CREATE TABLE IF NOT EXISTS revendedor_api_tokens (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            revendedor_usuario_id BIGINT UNSIGNED NOT NULL,
+            nombre VARCHAR(120) NULL,
+            token_hash CHAR(64) NOT NULL,
+            activo TINYINT(1) NOT NULL DEFAULT 1,
+            last_used_at DATETIME NULL,
+            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            UNIQUE KEY uq_revendedor_api_tokens_hash (token_hash),
+            KEY idx_revendedor_api_tokens_revendedor (revendedor_usuario_id),
+            CONSTRAINT fk_revendedor_api_tokens_revendedor FOREIGN KEY (revendedor_usuario_id) REFERENCES usuarios (id) ON DELETE CASCADE ON UPDATE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci'
+    );
+}
+
+function generateRevendedorApiToken(PDO $pdo, int $resellerUserId, string $label = ''): array
+{
+    ensureUsersResellerColumn($pdo);
+    ensureRevendedorApiTokensTable($pdo);
+
+    $resellerStmt = $pdo->prepare("SELECT id, email, revendedor FROM usuarios WHERE id = :id AND role = 'usuario' LIMIT 1");
+    $resellerStmt->execute(['id' => $resellerUserId]);
+    $reseller = $resellerStmt->fetch();
+
+    if ($reseller === false) {
+        return ['success' => false, 'message' => 'El usuario indicado no existe.'];
+    }
+
+    if ((int) ($reseller['revendedor'] ?? 0) !== 1) {
+        return ['success' => false, 'message' => 'El usuario indicado no está marcado como revendedor.'];
+    }
+
+    $token = bin2hex(random_bytes(32));
+    $tokenHash = hash('sha256', $token);
+
+    $pdo->prepare('UPDATE revendedor_api_tokens SET activo = 0 WHERE revendedor_usuario_id = :revendedor_usuario_id')
+        ->execute(['revendedor_usuario_id' => $resellerUserId]);
+
+    $insertStmt = $pdo->prepare('INSERT INTO revendedor_api_tokens (revendedor_usuario_id, nombre, token_hash, activo) VALUES (:revendedor_usuario_id, :nombre, :token_hash, 1)');
+    $insertStmt->execute([
+        'revendedor_usuario_id' => $resellerUserId,
+        'nombre' => $label !== '' ? $label : null,
+        'token_hash' => $tokenHash,
+    ]);
+
+    return [
+        'success' => true,
+        'message' => 'Token generado correctamente.',
+        'reseller_email' => (string) $reseller['email'],
+        'token' => $token,
+    ];
+}
+
+function generateRevendedorApiTokenForAdmin(array $input): array
+{
+    requireAdminUser();
+
+    $userId = (int) ($input['usuario_id'] ?? 0);
+
+    if ($userId <= 0) {
+        return ['success' => false, 'message' => 'Debes indicar el revendedor.'];
+    }
+
+    return generateRevendedorApiToken(getPdo(), $userId);
+}
+
 function getPublicAppConfiguration(): array
 {
     return fetchStoredAdminConfiguration();

@@ -2286,6 +2286,7 @@ header('Expires: 0');
                         <input class="form-check-input" type="checkbox" id="userAssignmentsResellerCheckbox">
                         <label class="form-check-label" for="userAssignmentsResellerCheckbox">Marcar como Revendedor</label>
                     </div>
+                    <button type="button" id="userAssignmentsGenerateTokenButton" class="btn btn-sm btn-outline-primary d-none">Generar token API</button>
                     <div id="userAssignmentsTabsWrapper" class="d-none">
                         <div class="nav nav-tabs" role="tablist">
                             <button id="userAssignmentsAccountsTabButton" class="nav-link active" type="button">Cuentas</button>
@@ -2847,6 +2848,7 @@ header('Expires: 0');
     const userAssignmentsModalTitle = document.getElementById('userAssignmentsModalTitle');
     const userAssignmentsModalSubtitle = document.getElementById('userAssignmentsModalSubtitle');
     const userAssignmentsResellerCheckbox = document.getElementById('userAssignmentsResellerCheckbox');
+    const userAssignmentsGenerateTokenButton = document.getElementById('userAssignmentsGenerateTokenButton');
     const userAssignmentsTabsWrapper = document.getElementById('userAssignmentsTabsWrapper');
     const userAssignmentsAccountsTabButton = document.getElementById('userAssignmentsAccountsTabButton');
     const userAssignmentsResellerTabButton = document.getElementById('userAssignmentsResellerTabButton');
@@ -4826,6 +4828,7 @@ header('Expires: 0');
         userAssignmentsModalSubtitle.textContent = `${assignments.length} cuenta(s) asignada(s) en total`;
         userAssignmentsResellerCheckbox.checked = isReseller;
         userAssignmentsTabsWrapper.classList.toggle('d-none', !isReseller);
+        userAssignmentsGenerateTokenButton.classList.toggle('d-none', !isReseller);
 
         if (isReseller) {
             renderUserResellerSellersTable(user, { resetFilters: resetSearch });
@@ -6480,6 +6483,50 @@ header('Expires: 0');
             showAdminStatus(error.message, 'danger');
         } finally {
             userAssignmentsResellerCheckbox.disabled = false;
+        }
+    });
+
+    userAssignmentsGenerateTokenButton.addEventListener('click', async () => {
+        const currentUserId = appState.selectedUserAssignmentsUserId;
+
+        if (currentUserId === null) {
+            return;
+        }
+
+        const confirmed = await openConfirmModal({
+            title: 'Generar token API',
+            message: 'Se generará un token nuevo para el Bot de códigos de este revendedor. Si ya existía un token anterior dejará de funcionar.',
+            confirmText: 'Generar',
+            confirmClass: 'btn btn-primary',
+        });
+
+        if (!confirmed) {
+            return;
+        }
+
+        userAssignmentsGenerateTokenButton.disabled = true;
+        showAdminStatus('Generando token API...', 'secondary');
+
+        try {
+            const formData = new FormData();
+            formData.append('action', 'generate_api_token');
+            formData.append('usuario_id', String(currentUserId));
+
+            const result = await requestJson('./api/admin/users.php', {
+                method: 'POST',
+                body: formData,
+            });
+
+            showAdminStatus(result.message, 'success');
+            showPasswordRevealModal({
+                title: 'Token API generado',
+                message: `Pega este token en el campo "Token / clave" del Bot de códigos junto con la URL https://streaming.reborxstore.com/api/external/asignaciones.php`,
+                password: result.token || '',
+            });
+        } catch (error) {
+            showAdminStatus(error.message, 'danger');
+        } finally {
+            userAssignmentsGenerateTokenButton.disabled = false;
         }
     });
 
