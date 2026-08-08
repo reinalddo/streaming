@@ -1616,6 +1616,9 @@ header('Expires: 0');
                         <li class="nav-item" role="presentation">
                             <button class="nav-link" id="admin-data-tab" data-bs-toggle="pill" data-bs-target="#admin-data-pane" type="button" role="tab" aria-controls="admin-data-pane" aria-selected="false">Datos Admin</button>
                         </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="bot-codigos-tab" data-bs-toggle="pill" data-bs-target="#bot-codigos-pane" type="button" role="tab" aria-controls="bot-codigos-pane" aria-selected="false">Bot de códigos</button>
+                        </li>
                     </ul>
 
                     <div class="tab-content">
@@ -2213,6 +2216,26 @@ header('Expires: 0');
                                 </form>
                             </div>
                         </div>
+
+                        <div class="tab-pane fade" id="bot-codigos-pane" role="tabpanel" aria-labelledby="bot-codigos-tab" tabindex="0">
+                            <div class="dashboard-block">
+                                <h2 class="section-title mb-1">Bot de códigos</h2>
+                                <p class="section-subtitle">Token de autenticación que usan sistemas externos (panel de revendedores, página de recargas, etc.) para asignar y desasignar cuentas automáticamente al comprar o eliminar una venta.</p>
+                                <div class="row g-3 mt-1">
+                                    <div class="col-12 col-md-8">
+                                        <label class="form-label">URL del endpoint</label>
+                                        <input class="form-control" type="text" value="https://streaming.reborxstore.com/api/external/asignaciones.php" readonly>
+                                    </div>
+                                    <div class="col-12 col-md-4">
+                                        <label class="form-label">Estado del token</label>
+                                        <div id="botCodigosTokenStatus" class="form-control-plaintext fw-semibold">Cargando...</div>
+                                    </div>
+                                    <div class="col-12 d-grid d-lg-flex justify-content-lg-end">
+                                        <button id="botCodigosGenerateTokenButton" class="btn btn-primary" type="button">Generar / Rotar token</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </section>
@@ -2286,7 +2309,6 @@ header('Expires: 0');
                         <input class="form-check-input" type="checkbox" id="userAssignmentsResellerCheckbox">
                         <label class="form-check-label" for="userAssignmentsResellerCheckbox">Marcar como Revendedor</label>
                     </div>
-                    <button type="button" id="userAssignmentsGenerateTokenButton" class="btn btn-sm btn-outline-primary d-none">Generar token API</button>
                     <div id="userAssignmentsTabsWrapper" class="d-none">
                         <div class="nav nav-tabs" role="tablist">
                             <button id="userAssignmentsAccountsTabButton" class="nav-link active" type="button">Cuentas</button>
@@ -2834,6 +2856,10 @@ header('Expires: 0');
     const adminDataSubmitButton = document.getElementById('adminDataSubmitButton');
     const appFavicon = document.getElementById('appFavicon');
 
+    const botCodigosTab = document.getElementById('bot-codigos-tab');
+    const botCodigosTokenStatus = document.getElementById('botCodigosTokenStatus');
+    const botCodigosGenerateTokenButton = document.getElementById('botCodigosGenerateTokenButton');
+
     const assignedUsersModalElement = document.getElementById('assignedUsersModal');
     const assignedUsersModalTitle = document.getElementById('assignedUsersModalTitle');
     const assignedUsersModalSubtitle = document.getElementById('assignedUsersModalSubtitle');
@@ -2848,7 +2874,6 @@ header('Expires: 0');
     const userAssignmentsModalTitle = document.getElementById('userAssignmentsModalTitle');
     const userAssignmentsModalSubtitle = document.getElementById('userAssignmentsModalSubtitle');
     const userAssignmentsResellerCheckbox = document.getElementById('userAssignmentsResellerCheckbox');
-    const userAssignmentsGenerateTokenButton = document.getElementById('userAssignmentsGenerateTokenButton');
     const userAssignmentsTabsWrapper = document.getElementById('userAssignmentsTabsWrapper');
     const userAssignmentsAccountsTabButton = document.getElementById('userAssignmentsAccountsTabButton');
     const userAssignmentsResellerTabButton = document.getElementById('userAssignmentsResellerTabButton');
@@ -4828,7 +4853,6 @@ header('Expires: 0');
         userAssignmentsModalSubtitle.textContent = `${assignments.length} cuenta(s) asignada(s) en total`;
         userAssignmentsResellerCheckbox.checked = isReseller;
         userAssignmentsTabsWrapper.classList.toggle('d-none', !isReseller);
-        userAssignmentsGenerateTokenButton.classList.toggle('d-none', !isReseller);
 
         if (isReseller) {
             renderUserResellerSellersTable(user, { resetFilters: resetSearch });
@@ -6042,6 +6066,67 @@ header('Expires: 0');
         }
     });
 
+    let botCodigosStatusLoaded = false;
+
+    async function loadBotCodigosTokenStatus() {
+        botCodigosTokenStatus.textContent = 'Cargando...';
+
+        try {
+            const status = await requestJson('./api/admin/bot-codigos.php');
+            botCodigosTokenStatus.textContent = status.configured
+                ? `Configurado (último uso: ${status.last_used_at || 'nunca'})`
+                : 'Sin configurar';
+        } catch (error) {
+            botCodigosTokenStatus.textContent = 'No se pudo cargar el estado';
+        }
+    }
+
+    if (botCodigosTab) {
+        botCodigosTab.addEventListener('shown.bs.tab', () => {
+            if (!botCodigosStatusLoaded) {
+                botCodigosStatusLoaded = true;
+                loadBotCodigosTokenStatus();
+            }
+        });
+    }
+
+    if (botCodigosGenerateTokenButton) {
+        botCodigosGenerateTokenButton.addEventListener('click', async () => {
+            const confirmed = await openConfirmModal({
+                title: 'Generar token API',
+                message: 'Se generará un token nuevo para el Bot de códigos. Si ya existía un token anterior dejará de funcionar y habrá que actualizarlo en el otro sistema.',
+                confirmText: 'Generar',
+                confirmClass: 'btn btn-primary',
+            });
+
+            if (!confirmed) {
+                return;
+            }
+
+            botCodigosGenerateTokenButton.disabled = true;
+            showAdminStatus('Generando token API...', 'secondary');
+
+            try {
+                const result = await requestJson('./api/admin/bot-codigos.php', {
+                    method: 'POST',
+                    body: new FormData(),
+                });
+
+                showAdminStatus(result.message, 'success');
+                showPasswordRevealModal({
+                    title: 'Token API generado',
+                    message: 'Pega este token en el campo "Token / clave" del Bot de códigos, junto con la URL del endpoint mostrada arriba.',
+                    password: result.token || '',
+                });
+                loadBotCodigosTokenStatus();
+            } catch (error) {
+                showAdminStatus(error.message, 'danger');
+            } finally {
+                botCodigosGenerateTokenButton.disabled = false;
+            }
+        });
+    }
+
     document.addEventListener('click', (event) => {
         if (event.target.closest('.user-search-select')) {
             return;
@@ -6483,50 +6568,6 @@ header('Expires: 0');
             showAdminStatus(error.message, 'danger');
         } finally {
             userAssignmentsResellerCheckbox.disabled = false;
-        }
-    });
-
-    userAssignmentsGenerateTokenButton.addEventListener('click', async () => {
-        const currentUserId = appState.selectedUserAssignmentsUserId;
-
-        if (currentUserId === null) {
-            return;
-        }
-
-        const confirmed = await openConfirmModal({
-            title: 'Generar token API',
-            message: 'Se generará un token nuevo para el Bot de códigos de este revendedor. Si ya existía un token anterior dejará de funcionar.',
-            confirmText: 'Generar',
-            confirmClass: 'btn btn-primary',
-        });
-
-        if (!confirmed) {
-            return;
-        }
-
-        userAssignmentsGenerateTokenButton.disabled = true;
-        showAdminStatus('Generando token API...', 'secondary');
-
-        try {
-            const formData = new FormData();
-            formData.append('action', 'generate_api_token');
-            formData.append('usuario_id', String(currentUserId));
-
-            const result = await requestJson('./api/admin/users.php', {
-                method: 'POST',
-                body: formData,
-            });
-
-            showAdminStatus(result.message, 'success');
-            showPasswordRevealModal({
-                title: 'Token API generado',
-                message: `Pega este token en el campo "Token / clave" del Bot de códigos junto con la URL https://streaming.reborxstore.com/api/external/asignaciones.php`,
-                password: result.token || '',
-            });
-        } catch (error) {
-            showAdminStatus(error.message, 'danger');
-        } finally {
-            userAssignmentsGenerateTokenButton.disabled = false;
         }
     });
 

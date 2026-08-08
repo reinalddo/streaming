@@ -6,79 +6,88 @@ require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/admin.php';
 require_once __DIR__ . '/user.php';
 
-function resolveResellerByApiToken(PDO $pdo, string $token): ?array
+function validateBotCodigosApiToken(PDO $pdo, string $token): bool
 {
-    ensureRevendedorApiTokensTable($pdo);
+    ensureBotCodigosApiTokensTable($pdo);
 
     if ($token === '') {
-        return null;
+        return false;
     }
 
     $tokenHash = hash('sha256', $token);
-    $stmt = $pdo->prepare(
-        "SELECT rat.id AS token_id, u.id AS usuario_id, u.email
-         FROM revendedor_api_tokens rat
-         INNER JOIN usuarios u ON u.id = rat.revendedor_usuario_id
-         WHERE rat.token_hash = :token_hash AND rat.activo = 1 AND u.role = 'usuario' AND u.revendedor = 1 AND u.activo = 1
-         LIMIT 1"
-    );
+    $stmt = $pdo->prepare('SELECT id FROM bot_codigos_api_tokens WHERE token_hash = :token_hash AND activo = 1 LIMIT 1');
     $stmt->execute(['token_hash' => $tokenHash]);
     $row = $stmt->fetch();
 
     if ($row === false) {
-        return null;
+        return false;
     }
 
-    $pdo->prepare('UPDATE revendedor_api_tokens SET last_used_at = NOW() WHERE id = :id')
-        ->execute(['id' => (int) $row['token_id']]);
+    $pdo->prepare('UPDATE bot_codigos_api_tokens SET last_used_at = NOW() WHERE id = :id')
+        ->execute(['id' => (int) $row['id']]);
 
-    return $row;
+    return true;
 }
 
-function assignAccountToSellerByEmailsForReseller(PDO $pdo, int $resellerUserId, string $accountEmail, string $sellerEmail): array
+function resolveSellerUserByEmail(PDO $pdo, string $email): ?array
 {
-    $scope = fetchResellerModuleScope($pdo, $resellerUserId);
+    $stmt = $pdo->prepare("SELECT id, email FROM usuarios WHERE email = :email AND role = 'usuario' LIMIT 1");
+    $stmt->execute(['email' => $email]);
+    $row = $stmt->fetch();
 
-    if (!$scope['enabled']) {
-        return ['success' => false, 'http_status' => 403, 'message' => 'El revendedor no está habilitado.'];
-    }
+    return $row === false ? null : $row;
+}
 
-    $sellerStmt = $pdo->prepare("SELECT id FROM usuarios WHERE email = :email AND role = 'usuario' LIMIT 1");
-    $sellerStmt->execute(['email' => $sellerEmail]);
-    $seller = $sellerStmt->fetch();
+function findResellerUserIdsForSeller(PDO $pdo, int $sellerUserId): array
+{
+    $stmt = $pdo->prepare('SELECT revendedor_usuario_id FROM usuario_revendedor_vendedores WHERE vendedor_usuario_id = :vendedor_usuario_id');
+    $stmt->execute(['vendedor_usuario_id' => $sellerUserId]);
 
-    if ($seller === false || !in_array((int) $seller['id'], $scope['seller_user_ids'], true)) {
-        return ['success' => false, 'http_status' => 404, 'message' => 'El correo del vendedor indicado no pertenece a este revendedor.'];
+    return array_map(static fn(array $row): int => (int) $row['revendedor_usuario_id'], $stmt->fetchAll());
+}
+
+function assignAccountToSellerByEmails(PDO $pdo, string $accountEmail, string $sellerEmail): array
+{
+    $seller = resolveSellerUserByEmail($pdo, $sellerEmail);
+
+    if ($seller === null) {
+        return ['success' => false, 'http_status' => 404, 'message' => 'El correo del vendedor indicado no existe en prycorreos.'];
     }
 
     $accountStmt = $pdo->prepare('SELECT id FROM cuentas_servicio WHERE correo_acceso = :correo_acceso LIMIT 1');
     $accountStmt->execute(['correo_acceso' => $accountEmail]);
     $account = $accountStmt->fetch();
 
-    if ($account === false || !in_array((int) $account['id'], $scope['account_ids'], true)) {
-        return ['success' => false, 'http_status' => 404, 'message' => 'El correo de la cuenta indicada no pertenece a este revendedor.'];
+    if ($account === false) {
+        return ['success' => false, 'http_status' => 404, 'message' => 'El correo de la cuenta indicada no existe.'];
     }
 
-    $result = insertUserAccountAssignment($pdo, (int) $seller['id'], (int) $account['id']);
-    $result['http_status'] = $result['success'] ? 200 : 409;
+    $resellerUserIds = findResellerUserIdsForSeller($pdo, (int) $seller['id']);
 
-    return $result;
+    if ($resellerUserIds === []) {
+        return ['success' => false, 'http_status' => 404, 'message' => 'El correo del vendedor no está vinculado a ningún revendedor.'];
+    }
+
+    foreach ($resellerUserIds as $resellerUserId) {
+        $scope = fetchResellerModuleScope($pdo, $resellerUserId);
+
+        if ($scope['enabled'] && in_array((int) $account['id'], $scope['account_ids'], true)) {
+            $result = insertUserAccountAssignment($pdo, (int) $seller['id'], (int) $account['id']);
+            $result['http_status'] = $result['success'] ? 200 : 409;
+
+            return $result;
+        }
+    }
+
+    return ['success' => false, 'http_status' => 404, 'message' => 'El correo de la cuenta indicada no pertenece al revendedor de ese vendedor.'];
 }
 
-function unassignAccountFromSellerByEmailsForReseller(PDO $pdo, int $resellerUserId, string $accountEmail, string $sellerEmail): array
+function unassignAccountFromSellerByEmails(PDO $pdo, string $accountEmail, string $sellerEmail): array
 {
-    $scope = fetchResellerModuleScope($pdo, $resellerUserId);
+    $seller = resolveSellerUserByEmail($pdo, $sellerEmail);
 
-    if (!$scope['enabled']) {
-        return ['success' => false, 'http_status' => 403, 'message' => 'El revendedor no está habilitado.'];
-    }
-
-    $sellerStmt = $pdo->prepare("SELECT id FROM usuarios WHERE email = :email AND role = 'usuario' LIMIT 1");
-    $sellerStmt->execute(['email' => $sellerEmail]);
-    $seller = $sellerStmt->fetch();
-
-    if ($seller === false || !in_array((int) $seller['id'], $scope['seller_user_ids'], true)) {
-        return ['success' => false, 'http_status' => 404, 'message' => 'El correo del vendedor indicado no pertenece a este revendedor.'];
+    if ($seller === null) {
+        return ['success' => false, 'http_status' => 404, 'message' => 'El correo del vendedor indicado no existe en prycorreos.'];
     }
 
     $accountStmt = $pdo->prepare('SELECT id FROM cuentas_servicio WHERE correo_acceso = :correo_acceso LIMIT 1');

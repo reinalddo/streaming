@@ -47,9 +47,8 @@ try {
     }
 
     $pdo = getPdo();
-    $reseller = resolveResellerByApiToken($pdo, $token);
 
-    if ($reseller === null) {
+    if (!validateBotCodigosApiToken($pdo, $token)) {
         http_response_code(401);
         echo json_encode(['success' => false, 'message' => 'Token de autenticación inválido.'], JSON_UNESCAPED_UNICODE);
         exit;
@@ -78,9 +77,9 @@ try {
     }
 
     if ($action === 'asignar' || $action === 'assign') {
-        $result = assignAccountToSellerByEmailsForReseller($pdo, (int) $reseller['usuario_id'], $accountEmail, $sellerEmail);
+        $result = assignAccountToSellerByEmails($pdo, $accountEmail, $sellerEmail);
     } elseif ($action === 'desasignar' || $action === 'unassign') {
-        $result = unassignAccountFromSellerByEmailsForReseller($pdo, (int) $reseller['usuario_id'], $accountEmail, $sellerEmail);
+        $result = unassignAccountFromSellerByEmails($pdo, $accountEmail, $sellerEmail);
     } else {
         http_response_code(422);
         echo json_encode(['success' => false, 'message' => 'Acción no válida.'], JSON_UNESCAPED_UNICODE);
