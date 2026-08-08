@@ -89,6 +89,8 @@ try {
     $httpStatus = (int) ($result['http_status'] ?? ($result['success'] ? 200 : 422));
     unset($result['http_status']);
 
+    logBotCodigosApiCall($pdo, $action, $accountEmail, $sellerEmail, (bool) $result['success'], $httpStatus, (string) $result['message']);
+
     http_response_code($httpStatus);
     echo json_encode($result, JSON_UNESCAPED_UNICODE);
 } catch (Throwable $exception) {

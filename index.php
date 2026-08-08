@@ -2234,6 +2234,25 @@ header('Expires: 0');
                                         <button id="botCodigosGenerateTokenButton" class="btn btn-primary" type="button">Generar / Rotar token</button>
                                     </div>
                                 </div>
+                                <hr class="my-4">
+                                <h3 class="section-title mb-1">Últimas llamadas</h3>
+                                <p class="section-subtitle">Cada intento de asignar o desasignar recibido por el bot, más reciente primero.</p>
+                                <div class="data-table-wrapper">
+                                    <div class="table-responsive service-users-table">
+                                        <table class="table table-hover align-middle mb-0">
+                                            <thead>
+                                                <tr>
+                                                    <th>Fecha</th>
+                                                    <th>Acción</th>
+                                                    <th>Cuenta</th>
+                                                    <th>Vendedor</th>
+                                                    <th>Resultado</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="botCodigosLogTableBody"><tr><td colspan="5" class="text-secondary">Cargando...</td></tr></tbody>
+                                        </table>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -2859,6 +2878,7 @@ header('Expires: 0');
     const botCodigosTab = document.getElementById('bot-codigos-tab');
     const botCodigosTokenStatus = document.getElementById('botCodigosTokenStatus');
     const botCodigosGenerateTokenButton = document.getElementById('botCodigosGenerateTokenButton');
+    const botCodigosLogTableBody = document.getElementById('botCodigosLogTableBody');
 
     const assignedUsersModalElement = document.getElementById('assignedUsersModal');
     const assignedUsersModalTitle = document.getElementById('assignedUsersModalTitle');
@@ -6068,16 +6088,43 @@ header('Expires: 0');
 
     let botCodigosStatusLoaded = false;
 
+    function renderBotCodigosLogTable(entries) {
+        const rows = normalizeArray(entries);
+
+        if (rows.length === 0) {
+            botCodigosLogTableBody.innerHTML = '<tr><td colspan="5" class="text-secondary">Todavía no hay llamadas registradas.</td></tr>';
+            return;
+        }
+
+        botCodigosLogTableBody.innerHTML = rows.map((entry) => {
+            const badgeClass = Number(entry.success) === 1 ? 'text-bg-success' : 'text-bg-danger';
+            const resultLabel = Number(entry.success) === 1 ? 'OK' : `Error ${escapeHtml(entry.http_status ?? '')}`;
+
+            return `
+                <tr>
+                    <td>${escapeHtml(entry.created_at || '')}</td>
+                    <td>${escapeHtml(entry.action || '')}</td>
+                    <td>${escapeHtml(entry.account_email || '-')}</td>
+                    <td>${escapeHtml(entry.reseller_email || '-')}</td>
+                    <td><span class="badge ${badgeClass}">${resultLabel}</span> <span class="small text-secondary">${escapeHtml(entry.message || '')}</span></td>
+                </tr>
+            `;
+        }).join('');
+    }
+
     async function loadBotCodigosTokenStatus() {
         botCodigosTokenStatus.textContent = 'Cargando...';
+        botCodigosLogTableBody.innerHTML = '<tr><td colspan="5" class="text-secondary">Cargando...</td></tr>';
 
         try {
             const status = await requestJson('./api/admin/bot-codigos.php');
             botCodigosTokenStatus.textContent = status.configured
                 ? `Configurado (último uso: ${status.last_used_at || 'nunca'})`
                 : 'Sin configurar';
+            renderBotCodigosLogTable(status.log);
         } catch (error) {
             botCodigosTokenStatus.textContent = 'No se pudo cargar el estado';
+            botCodigosLogTableBody.innerHTML = '<tr><td colspan="5" class="text-secondary">No se pudo cargar el registro.</td></tr>';
         }
     }
 

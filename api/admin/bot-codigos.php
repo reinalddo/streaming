@@ -3,12 +3,15 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../../includes/admin.php';
+require_once __DIR__ . '/../../includes/external_api.php';
 
 header('Content-Type: application/json; charset=UTF-8');
 
 try {
     if ($_SERVER['REQUEST_METHOD'] === 'GET') {
-        echo json_encode(getBotCodigosApiTokenStatusForAdmin(), JSON_UNESCAPED_UNICODE);
+        $status = getBotCodigosApiTokenStatusForAdmin();
+        $status['log'] = getRecentBotCodigosApiLog(getPdo(), 20);
+        echo json_encode($status, JSON_UNESCAPED_UNICODE);
         exit;
     }
 
