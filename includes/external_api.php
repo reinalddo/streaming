@@ -93,9 +93,25 @@ function ensureBotCodigosProfileCountsTable(PDO $pdo): void
     );
 }
 
+const BOT_CODIGOS_DUPLICATE_ASSIGN_WINDOW_SECONDS = 5;
+
 function incrementBotCodigosProfileCount(PDO $pdo, int $userId, int $accountId): int
 {
     ensureBotCodigosProfileCountsTable($pdo);
+
+    $stmt = $pdo->prepare('SELECT cantidad, updated_at FROM bot_codigos_profile_counts WHERE usuario_id = :usuario_id AND cuenta_servicio_id = :cuenta_servicio_id');
+    $stmt->execute(['usuario_id' => $userId, 'cuenta_servicio_id' => $accountId]);
+    $existing = $stmt->fetch();
+
+    if ($existing !== false && $existing['updated_at'] !== null) {
+        $secondsSinceLastUpdate = time() - strtotime((string) $existing['updated_at']);
+
+        if ($secondsSinceLastUpdate >= 0 && $secondsSinceLastUpdate < BOT_CODIGOS_DUPLICATE_ASSIGN_WINDOW_SECONDS) {
+            // Llamada duplicada de "asignar" para el mismo par cuenta/vendedor en una ventana muy corta:
+            // se ignora el incremento para no inflar el conteo con un perfil que no existe.
+            return (int) $existing['cantidad'];
+        }
+    }
 
     $pdo->prepare(
         'INSERT INTO bot_codigos_profile_counts (usuario_id, cuenta_servicio_id, cantidad)
