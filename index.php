@@ -6862,26 +6862,53 @@ header('Expires: 0');
         }
 
         if (deleteButton) {
-            openConfirmModal({
-                title: 'Eliminar cuenta',
-                message: 'Se eliminara la cuenta seleccionada si no tiene usuarios asignados.',
-                confirmText: 'Eliminar',
-                confirmClass: 'btn btn-danger',
-            }).then(async (confirmed) => {
+            const accountId = deleteButton.dataset.deleteServiceAccount;
+
+            (async () => {
+                const confirmed = await openConfirmModal({
+                    title: 'Eliminar cuenta',
+                    message: 'Se eliminará la cuenta seleccionada.',
+                    confirmText: 'Eliminar',
+                    confirmClass: 'btn btn-danger',
+                });
+
                 if (!confirmed) {
                     return;
                 }
 
-                const formData = new FormData();
-                formData.append('action', 'delete');
-                formData.append('cuenta_id', deleteButton.dataset.deleteServiceAccount);
-                showAdminStatus('Eliminando cuenta del servicio...', 'secondary');
+                const runDelete = async (force) => {
+                    const formData = new FormData();
+                    formData.append('action', 'delete');
+                    formData.append('cuenta_id', accountId);
+                    if (force) {
+                        formData.append('force', '1');
+                    }
+                    showAdminStatus('Eliminando cuenta del servicio...', 'secondary');
 
-                try {
-                    const result = await requestJson('./api/admin/accounts.php', {
+                    return requestJson('./api/admin/accounts.php', {
                         method: 'POST',
                         body: formData,
                     });
+                };
+
+                try {
+                    let result = await runDelete(false);
+
+                    if (!result.success && result.requires_confirmation) {
+                        const confirmedForce = await openConfirmModal({
+                            title: 'Esta cuenta tiene usuarios asignados',
+                            message: `${result.message} Si continúas, se les va a quitar el acceso automáticamente para poder subir cuentas nuevas. Esta acción no se puede deshacer.`,
+                            confirmText: 'Sí, eliminar de todas formas',
+                            confirmClass: 'btn btn-danger',
+                        });
+
+                        if (!confirmedForce) {
+                            showAdminStatus('Eliminación cancelada.', 'secondary');
+                            return;
+                        }
+
+                        result = await runDelete(true);
+                    }
 
                     if (!result.success) {
                         showAdminStatus(result.message, 'danger');
@@ -6899,7 +6926,8 @@ header('Expires: 0');
                 } catch (error) {
                     showAdminStatus(error.message, 'danger');
                 }
-            });
+            })();
+
             return;
         }
 

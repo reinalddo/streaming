@@ -724,6 +724,7 @@ function deleteServiceAccount(array $input): array
     requireAdminUser();
 
     $accountId = (int) ($input['cuenta_id'] ?? 0);
+    $force = (int) ($input['force'] ?? 0) === 1;
 
     if ($accountId <= 0) {
         return ['success' => false, 'message' => 'Debes indicar la cuenta a eliminar.'];
@@ -739,9 +740,24 @@ function deleteServiceAccount(array $input): array
 
     $assignmentCountStmt = $pdo->prepare('SELECT COUNT(*) FROM usuario_cuentas_servicio WHERE cuenta_servicio_id = :cuenta_id');
     $assignmentCountStmt->execute(['cuenta_id' => $accountId]);
+    $assignmentCount = (int) $assignmentCountStmt->fetchColumn();
 
-    if ((int) $assignmentCountStmt->fetchColumn() > 0) {
-        return ['success' => false, 'message' => 'No puedes eliminar una cuenta que tiene usuarios asignados.'];
+    if ($assignmentCount > 0 && !$force) {
+        return [
+            'success' => false,
+            'requires_confirmation' => true,
+            'assignment_count' => $assignmentCount,
+            'message' => $assignmentCount === 1
+                ? 'Esta cuenta tiene 1 usuario con acceso asignado.'
+                : "Esta cuenta tiene {$assignmentCount} usuarios con acceso asignado.",
+        ];
+    }
+
+    try {
+        $pdo->prepare('DELETE FROM bot_codigos_profile_counts WHERE cuenta_servicio_id = :cuenta_id')
+            ->execute(['cuenta_id' => $accountId]);
+    } catch (Throwable $exception) {
+        // Tabla auxiliar del bot de códigos; si no existe todavía, no bloquea la eliminación.
     }
 
     $deleteStmt = $pdo->prepare('DELETE FROM cuentas_servicio WHERE id = :id');
@@ -751,7 +767,12 @@ function deleteServiceAccount(array $input): array
         return ['success' => false, 'message' => 'No fue posible eliminar la cuenta del servicio.'];
     }
 
-    return ['success' => true, 'message' => 'Cuenta del servicio eliminada correctamente.'];
+    return [
+        'success' => true,
+        'message' => $assignmentCount > 0
+            ? "Cuenta eliminada correctamente. Se le quitó el acceso a {$assignmentCount} usuario(s) que la tenían asignada."
+            : 'Cuenta del servicio eliminada correctamente.',
+    ];
 }
 
 function assignAccountToUser(array $input): array
