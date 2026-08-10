@@ -431,6 +431,7 @@ function deleteService(array $input): array
     requireAdminUser();
 
     $serviceId = (int) ($input['servicio_id'] ?? 0);
+    $force = (int) ($input['force'] ?? 0) === 1;
 
     if ($serviceId <= 0) {
         return ['success' => false, 'message' => 'Debes indicar el servicio a eliminar.'];
@@ -447,9 +448,25 @@ function deleteService(array $input): array
 
     $accountCountStmt = $pdo->prepare('SELECT COUNT(*) FROM cuentas_servicio WHERE servicio_id = :servicio_id');
     $accountCountStmt->execute(['servicio_id' => $serviceId]);
+    $accountCount = (int) $accountCountStmt->fetchColumn();
 
-    if ((int) $accountCountStmt->fetchColumn() > 0) {
-        return ['success' => false, 'message' => 'Solo puedes eliminar servicios que no tengan cuentas registradas.'];
+    if ($accountCount > 0 && !$force) {
+        return [
+            'success' => false,
+            'requires_confirmation' => true,
+            'account_count' => $accountCount,
+            'message' => $accountCount === 1
+                ? 'Este servicio tiene 1 cuenta registrada.'
+                : "Este servicio tiene {$accountCount} cuentas registradas.",
+        ];
+    }
+
+    try {
+        $pdo->prepare(
+            'DELETE FROM bot_codigos_profile_counts WHERE cuenta_servicio_id IN (SELECT id FROM cuentas_servicio WHERE servicio_id = :servicio_id)'
+        )->execute(['servicio_id' => $serviceId]);
+    } catch (Throwable $exception) {
+        // Tabla auxiliar del bot de códigos; si no existe todavía, no bloquea la eliminación.
     }
 
     $deleteStmt = $pdo->prepare('DELETE FROM servicios WHERE id = :id');
@@ -461,7 +478,12 @@ function deleteService(array $input): array
 
     deleteLocalServiceAsset((string) $service['logo_url']);
 
-    return ['success' => true, 'message' => 'Servicio eliminado correctamente.'];
+    return [
+        'success' => true,
+        'message' => $accountCount > 0
+            ? "Servicio eliminado correctamente, junto con {$accountCount} cuenta(s) registrada(s)."
+            : 'Servicio eliminado correctamente.',
+    ];
 }
 
 function createGallerySlide(array $input, array $files = []): array
@@ -1171,6 +1193,7 @@ function deleteRegisteredUser(array $input): array
     requireAdminUser();
 
     $userId = (int) ($input['usuario_id'] ?? 0);
+    $force = (int) ($input['force'] ?? 0) === 1;
 
     if ($userId <= 0) {
         return ['success' => false, 'message' => 'Debes indicar el usuario a eliminar.'];
@@ -1179,9 +1202,24 @@ function deleteRegisteredUser(array $input): array
     $pdo = getPdo();
     $assignmentCountStmt = $pdo->prepare('SELECT COUNT(*) FROM usuario_cuentas_servicio WHERE usuario_id = :usuario_id');
     $assignmentCountStmt->execute(['usuario_id' => $userId]);
+    $assignmentCount = (int) $assignmentCountStmt->fetchColumn();
 
-    if ((int) $assignmentCountStmt->fetchColumn() > 0) {
-        return ['success' => false, 'message' => 'No puedes eliminar un usuario que tiene cuentas asignadas.'];
+    if ($assignmentCount > 0 && !$force) {
+        return [
+            'success' => false,
+            'requires_confirmation' => true,
+            'assignment_count' => $assignmentCount,
+            'message' => $assignmentCount === 1
+                ? 'Este usuario tiene 1 cuenta asignada.'
+                : "Este usuario tiene {$assignmentCount} cuentas asignadas.",
+        ];
+    }
+
+    try {
+        $pdo->prepare('DELETE FROM bot_codigos_profile_counts WHERE usuario_id = :usuario_id')
+            ->execute(['usuario_id' => $userId]);
+    } catch (Throwable $exception) {
+        // Tabla auxiliar del bot de códigos; si no existe todavía, no bloquea la eliminación.
     }
 
     $stmt = $pdo->prepare("DELETE FROM usuarios WHERE id = :id AND role = 'usuario'");
@@ -1191,7 +1229,12 @@ function deleteRegisteredUser(array $input): array
         return ['success' => false, 'message' => 'El usuario indicado no existe o no puede eliminarse.'];
     }
 
-    return ['success' => true, 'message' => 'Usuario eliminado correctamente.'];
+    return [
+        'success' => true,
+        'message' => $assignmentCount > 0
+            ? "Usuario eliminado correctamente. Se le quitaron {$assignmentCount} cuenta(s) asignada(s)."
+            : 'Usuario eliminado correctamente.',
+    ];
 }
 
 function normalizeColor(string $value): string

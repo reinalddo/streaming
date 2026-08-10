@@ -5205,8 +5205,7 @@ header('Expires: 0');
 
         servicesList.innerHTML = services.map((service) => {
             const accountCount = normalizeArray(service.accounts).length;
-            const deleteDisabled = accountCount > 0 ? 'disabled' : '';
-            const deleteHelp = accountCount > 0 ? 'Solo se puede eliminar si no tiene cuentas registradas.' : 'Eliminar servicio';
+            const deleteHelp = accountCount > 0 ? 'Elimina el servicio y todas sus cuentas registradas.' : 'Eliminar servicio';
 
             return `
                 <div class="col-12 col-md-6 col-xxl-4">
@@ -5233,7 +5232,7 @@ header('Expires: 0');
                             </div>
                             <div class="d-flex gap-2">
                                 <button class="btn btn-outline-secondary flex-fill" type="button" data-edit-service="${service.id}">Editar</button>
-                                <button class="btn btn-outline-danger flex-fill" type="button" data-delete-service="${service.id}" title="${escapeHtml(deleteHelp)}" ${deleteDisabled}>Eliminar</button>
+                                <button class="btn btn-outline-danger flex-fill" type="button" data-delete-service="${service.id}" title="${escapeHtml(deleteHelp)}">Eliminar</button>
                             </div>
                         </div>
                     </article>
@@ -5294,7 +5293,7 @@ header('Expires: 0');
                     <td>
                         <div class="d-flex gap-2 flex-wrap">
                             <button class="btn btn-sm btn-outline-secondary" type="button" data-edit-service-account="${account.id}">Editar</button>
-                            <button class="btn btn-sm btn-outline-danger" type="button" data-delete-service-account="${account.id}" ${assignedUsers.length > 0 ? 'disabled' : ''}>Eliminar</button>
+                            <button class="btn btn-sm btn-outline-danger" type="button" data-delete-service-account="${account.id}">Eliminar</button>
                         </div>
                     </td>
                 </tr>
@@ -5388,8 +5387,7 @@ header('Expires: 0');
         registeredUsersTableBody.innerHTML = paginatedRows.map((user) => {
             const assignmentCount = normalizeArray(user.assignments).length;
             const assignmentsLabel = assignmentCount === 1 ? '1 cuenta asignada' : `${assignmentCount} cuentas asignadas`;
-            const canDeleteUser = assignmentCount === 0;
-            const deleteHelp = canDeleteUser ? 'Eliminar usuario' : 'No puedes eliminar usuarios con cuentas asignadas';
+            const deleteHelp = assignmentCount === 0 ? 'Eliminar usuario' : 'Elimina el usuario y le quita las cuentas que tenga asignadas.';
 
             return `
                 <tr>
@@ -5406,7 +5404,7 @@ header('Expires: 0');
                         <div class="d-flex gap-2 flex-wrap">
                             <button class="btn btn-sm btn-outline-primary" type="button" data-edit-user="${user.id}">Editar</button>
                             <button class="btn btn-sm btn-outline-secondary" type="button" data-reset-user-password="${user.id}">Restablecer clave</button>
-                            <button class="btn btn-sm btn-outline-danger" type="button" data-delete-user="${user.id}" title="${escapeHtml(deleteHelp)}" ${canDeleteUser ? '' : 'disabled'}>Eliminar</button>
+                            <button class="btn btn-sm btn-outline-danger" type="button" data-delete-user="${user.id}" title="${escapeHtml(deleteHelp)}">Eliminar</button>
                         </div>
                     </td>
                 </tr>
@@ -6762,7 +6760,7 @@ header('Expires: 0');
 
         const confirmed = await openConfirmModal({
             title: 'Eliminar servicio',
-            message: 'Se eliminara el servicio seleccionado si no tiene cuentas registradas.',
+            message: 'Se eliminará el servicio seleccionado.',
             confirmText: 'Eliminar',
             confirmClass: 'btn btn-danger',
         });
@@ -6771,16 +6769,46 @@ header('Expires: 0');
             return;
         }
 
-        const formData = new FormData();
-        formData.append('action', 'delete');
-        formData.append('servicio_id', deleteButton.dataset.deleteService);
-        showAdminStatus('Eliminando servicio...', 'secondary');
+        const serviceId = deleteButton.dataset.deleteService;
 
-        try {
-            const result = await requestJson('./api/admin/services.php', {
+        const runDelete = async (force) => {
+            const formData = new FormData();
+            formData.append('action', 'delete');
+            formData.append('servicio_id', serviceId);
+            if (force) {
+                formData.append('force', '1');
+            }
+            showAdminStatus('Eliminando servicio...', 'secondary');
+
+            return requestJson('./api/admin/services.php', {
                 method: 'POST',
                 body: formData,
             });
+        };
+
+        try {
+            let result = await runDelete(false);
+
+            if (!result.success && result.requires_confirmation) {
+                const confirmedForce = await openConfirmModal({
+                    title: 'Este servicio tiene cuentas registradas',
+                    message: `${result.message} Si continúas, se van a eliminar todas junto con el servicio, y se les quitará el acceso a los usuarios que las tengan asignadas. Esta acción no se puede deshacer.`,
+                    confirmText: 'Sí, eliminar de todas formas',
+                    confirmClass: 'btn btn-danger',
+                });
+
+                if (!confirmedForce) {
+                    showAdminStatus('Eliminación cancelada.', 'secondary');
+                    return;
+                }
+
+                result = await runDelete(true);
+            }
+
+            if (!result.success) {
+                showAdminStatus(result.message, 'danger');
+                return;
+            }
 
             resetServiceForm();
             showAdminStatus(result.message, 'success');
@@ -7072,16 +7100,46 @@ header('Expires: 0');
             return;
         }
 
-        const formData = new FormData();
-        formData.append('action', 'delete');
-        formData.append('usuario_id', deleteButton.dataset.deleteUser);
-        showAdminStatus('Eliminando usuario...', 'secondary');
+        const userId = deleteButton.dataset.deleteUser;
 
-        try {
-            const result = await requestJson('./api/admin/users.php', {
+        const runDelete = async (force) => {
+            const formData = new FormData();
+            formData.append('action', 'delete');
+            formData.append('usuario_id', userId);
+            if (force) {
+                formData.append('force', '1');
+            }
+            showAdminStatus('Eliminando usuario...', 'secondary');
+
+            return requestJson('./api/admin/users.php', {
                 method: 'POST',
                 body: formData,
             });
+        };
+
+        try {
+            let result = await runDelete(false);
+
+            if (!result.success && result.requires_confirmation) {
+                const confirmedForce = await openConfirmModal({
+                    title: 'Este usuario tiene cuentas asignadas',
+                    message: `${result.message} Si continúas, se le van a quitar automáticamente antes de eliminarlo. Esta acción no se puede deshacer.`,
+                    confirmText: 'Sí, eliminar de todas formas',
+                    confirmClass: 'btn btn-danger',
+                });
+
+                if (!confirmedForce) {
+                    showAdminStatus('Eliminación cancelada.', 'secondary');
+                    return;
+                }
+
+                result = await runDelete(true);
+            }
+
+            if (!result.success) {
+                showAdminStatus(result.message, 'danger');
+                return;
+            }
 
             userEditForm.reset();
             userEditPanel.classList.add('d-none');
