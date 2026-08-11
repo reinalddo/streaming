@@ -33,7 +33,7 @@ try {
         exit;
     }
 
-    http_response_code($result['success'] ? 200 : 422);
+    http_response_code($result['success'] || !empty($result['requires_confirmation']) ? 200 : 422);
     echo json_encode($result, JSON_UNESCAPED_UNICODE);
 } catch (RuntimeException $exception) {
     http_response_code(403);
